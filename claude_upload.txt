@@ -1,0 +1,1858 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+backend/
+  config/
+    db.js
+  models/
+    Expense.js
+    Group.js
+    Settlement.js
+  routes/
+    expenseRoutes.js
+    groupRoutes.js
+  db-setup.js
+  db-view.js
+  server.js
+frontend/
+  db-viewer.html
+  index.html
+.env.example
+.gitignore
+index.html
+package.json
+README.md
+script.js
+vercel.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="backend/models/Expense.js">
+const mongoose = require('mongoose');
+
+const expenseSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    description: { type: String, required: true },
+    amount: { type: Number, required: true },
+    payersData: { type: Object, default: {} },
+    involvedIds: { type: [String], default: [] }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Expense', expenseSchema);
+</file>
+
+<file path="backend/models/Group.js">
+const mongoose = require('mongoose');
+
+const groupSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    balance: { type: Number, default: 0 },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Group', groupSchema);
+</file>
+
+<file path="backend/models/Settlement.js">
+const mongoose = require('mongoose');
+
+const settlementSchema = new mongoose.Schema({
+    from: { type: String, required: true },
+    to: { type: String, required: true },
+    amount: { type: Number, required: true },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Settlement', settlementSchema);
+</file>
+
+<file path="backend/routes/expenseRoutes.js">
+const express = require('express');
+const router = express.Router();
+const Expense = require('../models/Expense');
+const Settlement = require('../models/Settlement');
+
+// Add an expense
+router.post('/expenses', async (req, res) => {
+    const { id, description, amount, payersData, involvedIds } = req.body;
+    if (!id || !description || !amount) return res.status(400).json({ error: 'id, description, amount required' });
+    try {
+        await Expense.findOneAndUpdate(
+            { id },
+            { id, description, amount, payersData, involvedIds },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete an expense
+router.delete('/expenses/:id', async (req, res) => {
+    try {
+        await Expense.findOneAndDelete({ id: req.params.id });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Save a settlement log
+router.post('/settlements', async (req, res) => {
+    const { from, to, amount } = req.body;
+    try {
+        await Settlement.create({ from, to, amount });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+module.exports = router;
+</file>
+
+<file path="backend/routes/groupRoutes.js">
+const express = require('express');
+const router = express.Router();
+const Group = require('../models/Group');
+const Expense = require('../models/Expense');
+const Settlement = require('../models/Settlement');
+
+// Get application state
+router.get('/state', async (req, res) => {
+    try {
+        const friends = await Group.find().sort({ createdAt: 1 });
+        const expenses = await Expense.find().sort({ createdAt: 1 });
+        
+        res.json({
+            friends: friends.map(f => ({ id: f.id, name: f.name, balance: f.balance })),
+            expenses: expenses.map(e => ({
+                id: e.id,
+                description: e.description,
+                amount: e.amount,
+                payersData: e.payersData,
+                involvedIds: e.involvedIds
+            }))
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add a friend / group member
+router.post('/friends', async (req, res) => {
+    const { id, name, balance = 0 } = req.body;
+    if (!id || !name) return res.status(400).json({ error: 'id and name required' });
+    try {
+        await Group.findOneAndUpdate(
+            { id }, 
+            { id, name, balance }, 
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a friend
+router.delete('/friends/:id', async (req, res) => {
+    try {
+        await Group.findOneAndDelete({ id: req.params.id });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Reset all data
+router.post('/reset', async (req, res) => {
+    try {
+        await Group.deleteMany({});
+        await Expense.deleteMany({});
+        await Settlement.deleteMany({});
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DB Status check
+router.get('/status', async (req, res) => {
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ connected: false, message: 'MongoDB not connected' });
+    }
+    try {
+        const friends = await Group.countDocuments();
+        const expenses = await Expense.countDocuments();
+        const settlements = await Settlement.countDocuments();
+        res.json({
+            connected: true,
+            serverTime: new Date(),
+            records: { friends, expenses, settlements }
+        });
+    } catch (err) {
+        res.json({ connected: false, message: err.message });
+    }
+});
+
+module.exports = router;
+</file>
+
+<file path="backend/db-setup.js">
+require('dotenv').config();
+const { Pool } = require('pg');
+
+if (!process.env.DATABASE_URL) {
+    console.error('\n❌ ERROR: DATABASE_URL is not set in your .env file!');
+    console.error('Please add your PostgreSQL connection string:');
+    console.error('  DATABASE_URL=postgres://username:password@host:5432/dbname\n');
+    process.exit(1);
+}
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+async function setupDB() {
+    console.log('🔌 Connecting to PostgreSQL...');
+
+    try {
+        await pool.query('SELECT NOW()');
+        console.log('✅ Connected successfully!\n');
+
+        console.log('📦 Creating tables...');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS friends (
+                id VARCHAR(255) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                balance NUMERIC DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        `);
+        console.log('  ✔ Table "friends" ready');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS expenses (
+                id VARCHAR(255) PRIMARY KEY,
+                description TEXT NOT NULL,
+                amount NUMERIC NOT NULL,
+                payers_data JSONB,
+                involved_ids JSONB,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        `);
+        console.log('  ✔ Table "expenses" ready');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS settlements (
+                id SERIAL PRIMARY KEY,
+                from_friend_id VARCHAR(255),
+                to_friend_id VARCHAR(255),
+                amount NUMERIC,
+                settled_at TIMESTAMP DEFAULT NOW()
+            );
+        `);
+        console.log('  ✔ Table "settlements" ready');
+
+        console.log('\n✅ Database setup complete! You can now run: npm run dev\n');
+    } catch (err) {
+        console.error('\n❌ Database connection failed:', err.message);
+        console.error('Make sure your DATABASE_URL is correct in the .env file.\n');
+    } finally {
+        await pool.end();
+    }
+}
+
+setupDB();
+</file>
+
+<file path="backend/db-view.js">
+require('dotenv').config();
+const { Pool } = require('pg');
+
+if (!process.env.DATABASE_URL) {
+    console.error('\n❌ ERROR: DATABASE_URL is not set in your .env file!\n');
+    process.exit(1);
+}
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+async function viewDB() {
+    try {
+        console.log('\n========================================');
+        console.log('        SplitSmart — Database Viewer');
+        console.log('========================================\n');
+
+        // Friends
+        const friendsRes = await pool.query('SELECT * FROM friends ORDER BY created_at ASC');
+        console.log(`👥 FRIENDS (${friendsRes.rowCount} records)`);
+        console.log('─────────────────────────────────────');
+        if (friendsRes.rowCount === 0) {
+            console.log('  (no friends added yet)');
+        } else {
+            friendsRes.rows.forEach(f => {
+                const bal = parseFloat(f.balance).toFixed(2);
+                const status = bal > 0 ? `gets ₹${bal}` : bal < 0 ? `owes ₹${Math.abs(bal)}` : 'settled';
+                console.log(`  • ${f.name.padEnd(20)} ${status.padEnd(20)} [id: ${f.id}]`);
+            });
+        }
+
+        // Expenses
+        const expRes = await pool.query('SELECT * FROM expenses ORDER BY created_at DESC');
+        console.log(`\n💸 EXPENSES (${expRes.rowCount} records)`);
+        console.log('─────────────────────────────────────');
+        if (expRes.rowCount === 0) {
+            console.log('  (no expenses recorded yet)');
+        } else {
+            expRes.rows.forEach(e => {
+                const payers = e.payers_data ? JSON.parse(JSON.stringify(e.payers_data)) : [];
+                console.log(`  • ${e.description.padEnd(25)} ₹${parseFloat(e.amount).toFixed(2).padEnd(10)} [id: ${e.id}]`);
+            });
+        }
+
+        // Settlements
+        const setRes = await pool.query('SELECT * FROM settlements ORDER BY settled_at DESC LIMIT 20');
+        console.log(`\n🤝 RECENT SETTLEMENTS (${setRes.rowCount} records)`);
+        console.log('─────────────────────────────────────');
+        if (setRes.rowCount === 0) {
+            console.log('  (no settlements recorded yet)');
+        } else {
+            setRes.rows.forEach(s => {
+                console.log(`  • ${s.from_friend_id} → ${s.to_friend_id}  ₹${parseFloat(s.amount).toFixed(2)}`);
+            });
+        }
+
+        console.log('\n========================================\n');
+    } catch (err) {
+        console.error('❌ Error reading database:', err.message);
+        console.error('Have you run "npm run db:setup" first?\n');
+    } finally {
+        await pool.end();
+    }
+}
+
+viewDB();
+</file>
+
+<file path="frontend/db-viewer.html">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitSmart — Database Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #22263a;
+            --border: rgba(255,255,255,0.08);
+            --accent: #6366f1;
+            --accent2: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --font: 'Inter', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .header-title { display: flex; align-items: center; gap: 0.75rem; }
+        .header-title .dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--danger); box-shadow: 0 0 8px var(--danger);
+            transition: background 0.4s, box-shadow 0.4s;
+        }
+        .header-title .dot.connected {
+            background: var(--accent2); box-shadow: 0 0 8px var(--accent2);
+        }
+        h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+        .subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
+
+        .btn {
+            padding: 0.6rem 1.25rem;
+            border: none; border-radius: 8px;
+            font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+        .btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+        /* Status Card */
+        .status-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+        }
+        .stat { text-align: center; }
+        .stat-num { font-size: 2rem; font-weight: 700; color: var(--accent); font-family: var(--mono); }
+        .stat-lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
+
+        /* Tables */
+        .section { margin-bottom: 2.5rem; }
+        .section-header {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .section-header h2 { font-size: 1rem; font-weight: 600; }
+        .section-header .badge {
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 0.72rem; font-weight: 600;
+            padding: 0.15rem 0.55rem;
+            border-radius: 999px; border: 1px solid var(--border);
+        }
+        .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        thead {
+            background: var(--surface2);
+            position: sticky; top: 0;
+        }
+        thead th {
+            padding: 0.8rem 1.25rem;
+            text-align: left;
+            font-size: 0.72rem; font-weight: 600;
+            color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr { background: var(--surface); transition: background 0.15s; }
+        tbody tr:hover { background: var(--surface2); }
+        tbody tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+        tbody td { padding: 0.85rem 1.25rem; }
+        .mono { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+        .tag {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.72rem; font-weight: 600;
+        }
+        .tag-green { background: rgba(16,185,129,0.15); color: var(--accent2); }
+        .tag-red { background: rgba(239,68,68,0.12); color: var(--danger); }
+        .tag-blue { background: rgba(99,102,241,0.15); color: var(--accent); }
+        .tag-grey { background: var(--surface2); color: var(--muted); }
+
+        .empty-row td {
+            text-align: center;
+            padding: 2.5rem;
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        /* Error / Not connected banner */
+        .banner {
+            display: none;
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+        .banner.show { display: block; }
+
+        /* Raw JSON toggle */
+        .json-block {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: #7dd3fc;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        details summary {
+            cursor: pointer; font-size: 0.8rem;
+            color: var(--muted); margin-top: 0.5rem;
+            user-select: none;
+        }
+        details summary:hover { color: var(--text); }
+
+        .refresh-info { font-size: 0.78rem; color: var(--muted); }
+        .controls { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-title">
+        <div class="dot" id="status-dot"></div>
+        <div>
+            <h1>SplitSmart — DB Viewer</h1>
+            <p class="subtitle" id="db-subtitle">Connecting to PostgreSQL…</p>
+        </div>
+    </div>
+    <div class="controls">
+        <span class="refresh-info" id="last-refresh">—</span>
+        <button class="btn btn-primary" onclick="loadAll()">↻ Refresh</button>
+        <button class="btn btn-danger" onclick="confirmReset()">🗑 Reset All Data</button>
+    </div>
+</div>
+
+<div class="banner" id="error-banner"></div>
+
+<div class="status-card">
+    <div class="stat"><div class="stat-num" id="count-friends">—</div><div class="stat-lbl">Friends</div></div>
+    <div class="stat"><div class="stat-num" id="count-expenses">—</div><div class="stat-lbl">Expenses</div></div>
+    <div class="stat"><div class="stat-num" id="count-settlements">—</div><div class="stat-lbl">Settlements Logged</div></div>
+    <div class="stat"><div class="stat-num" id="total-amount">—</div><div class="stat-lbl">Total Tracked (₹)</div></div>
+</div>
+
+<!-- Friends Table -->
+<div class="section">
+    <div class="section-header">
+        <h2>👥 Friends</h2>
+        <span class="badge" id="badge-friends">0</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Balance</th>
+                    <th>Added At</th>
+                </tr>
+            </thead>
+            <tbody id="friends-body">
+                <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Expenses Table -->
+<div class="section">
+    <div class="section-header">
+        <h2>💸 Expenses</h2>
+        <span class="badge" id="badge-expenses">0</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Paid By</th>
+                    <th>Shared With</th>
+                    <th>Recorded At</th>
+                </tr>
+            </thead>
+            <tbody id="expenses-body">
+                <tr class="empty-row"><td colspan="6">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Settlements Table -->
+<div class="section">
+    <div class="section-header">
+        <h2>🤝 Settlement Log</h2>
+        <span class="badge" id="badge-settlements">0</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Amount</th>
+                    <th>Logged At</th>
+                </tr>
+            </thead>
+            <tbody id="settlements-body">
+                <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Raw JSON -->
+<details>
+    <summary>🔢 Show raw API JSON (/api/state)</summary>
+    <div class="json-block" id="raw-json">Loading…</div>
+</details>
+
+<script>
+    let stateData = { friends: [], expenses: [] };
+
+    async function loadAll() {
+        try {
+            // Status check
+            const statusRes = await fetch('/api/status');
+            const status = await statusRes.json();
+
+            const dot = document.getElementById('status-dot');
+            const sub = document.getElementById('db-subtitle');
+
+            if (status.connected) {
+                dot.classList.add('connected');
+                sub.textContent = `Connected · Server time: ${new Date(status.serverTime).toLocaleTimeString()}`;
+                document.getElementById('count-friends').textContent = status.records.friends;
+                document.getElementById('count-expenses').textContent = status.records.expenses;
+                document.getElementById('count-settlements').textContent = status.records.settlements;
+                hideBanner();
+            } else {
+                dot.classList.remove('connected');
+                sub.textContent = 'Not connected to PostgreSQL';
+                showBanner('⚠️ ' + status.message);
+            }
+
+            // Load state
+            const stateRes = await fetch('/api/state');
+            const data = await stateRes.json();
+            if (data.error) {
+                showBanner('❌ ' + data.error);
+                return;
+            }
+            stateData = data;
+            document.getElementById('raw-json').textContent = JSON.stringify(data, null, 2);
+            renderFriends(data.friends);
+            renderExpenses(data.expenses);
+            await loadSettlements();
+
+            // Total amount
+            const total = (data.expenses || []).reduce((s, e) => s + e.amount, 0);
+            document.getElementById('total-amount').textContent = '₹' + total.toFixed(2);
+
+            document.getElementById('last-refresh').textContent = 'Last refresh: ' + new Date().toLocaleTimeString();
+        } catch (err) {
+            showBanner('❌ Could not reach server: ' + err.message);
+        }
+    }
+
+    function renderFriends(friends) {
+        const tbody = document.getElementById('friends-body');
+        document.getElementById('badge-friends').textContent = friends.length;
+        if (!friends.length) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No friends added yet</td></tr>';
+            return;
+        }
+        tbody.innerHTML = friends.map(f => {
+            const bal = parseFloat(f.balance || 0);
+            const tag = bal > 0.01
+                ? `<span class="tag tag-green">gets ₹${bal.toFixed(2)}</span>`
+                : bal < -0.01
+                ? `<span class="tag tag-red">owes ₹${Math.abs(bal).toFixed(2)}</span>`
+                : `<span class="tag tag-grey">settled</span>`;
+            return `<tr>
+                <td class="mono">${f.id}</td>
+                <td><strong>${f.name}</strong></td>
+                <td>${tag}</td>
+                <td class="mono">${f.created_at ? new Date(f.created_at).toLocaleString() : '—'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderExpenses(expenses) {
+        const tbody = document.getElementById('expenses-body');
+        document.getElementById('badge-expenses').textContent = expenses.length;
+        if (!expenses.length) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No expenses recorded yet</td></tr>';
+            return;
+        }
+
+        const friendMap = {};
+        (stateData.friends || []).forEach(f => friendMap[f.id] = f.name);
+
+        tbody.innerHTML = expenses.slice().reverse().map(e => {
+            const payers = (e.payersData || e.payers_data || [])
+                .map(p => `${friendMap[p.id] || p.id} (₹${p.amount})`)
+                .join(', ') || '—';
+            const involved = (e.involvedIds || e.involved_ids || [])
+                .map(id => friendMap[id] || id)
+                .join(', ') || 'All';
+            return `<tr>
+                <td class="mono">${e.id}</td>
+                <td><strong>${e.description}</strong></td>
+                <td><span class="tag tag-blue">₹${parseFloat(e.amount).toFixed(2)}</span></td>
+                <td>${payers}</td>
+                <td>${involved}</td>
+                <td class="mono">${e.created_at ? new Date(e.created_at).toLocaleString() : '—'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function loadSettlements() {
+        try {
+            // We use /api/state to derive settlements conceptually;
+            // actual logged settlements come from the DB
+            const res = await fetch('/api/status');
+            const s = await res.json();
+            const count = parseInt(s.records?.settlements || 0);
+            document.getElementById('badge-settlements').textContent = count;
+            if (count === 0) {
+                document.getElementById('settlements-body').innerHTML =
+                    '<tr class="empty-row"><td colspan="5">No settlement logs yet. Settlements are logged when "Re-calculate" is triggered.</td></tr>';
+            }
+        } catch (e) {}
+    }
+
+    function showBanner(msg) {
+        const b = document.getElementById('error-banner');
+        b.textContent = msg;
+        b.classList.add('show');
+    }
+    function hideBanner() {
+        document.getElementById('error-banner').classList.remove('show');
+    }
+
+    async function confirmReset() {
+        if (!confirm('⚠️ This will delete ALL friends, expenses, and settlements from the database. Are you sure?')) return;
+        try {
+            const res = await fetch('/api/reset', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                alert('✅ All data cleared.');
+                loadAll();
+            } else {
+                alert('❌ Reset failed: ' + data.error);
+            }
+        } catch (err) {
+            alert('❌ ' + err.message);
+        }
+    }
+
+    // Load on page open & auto-refresh every 10s
+    loadAll();
+    setInterval(loadAll, 10000);
+</script>
+</body>
+</html>
+</file>
+
+<file path="index.html">
+
+</file>
+
+<file path="script.js">
+
+</file>
+
+<file path="vercel.json">
+{
+  "outputDirectory": "frontend"
+}
+</file>
+
+<file path="backend/config/db.js">
+const mongoose = require('mongoose');
+
+const connectDB = async () => {
+    try {
+        if (!process.env.MONGO_URI) {
+            console.warn('\n⚠️  MONGO_URI not set — running without database connection.\n   Add MONGO_URI to your .env file and restart.\n');
+            return;
+        }
+        const conn = await mongoose.connect(process.env.MONGO_URI, {
+            serverApi: {
+                version: '1',
+                strict: true,
+                deprecationErrors: true,
+            }
+        });
+        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    } catch (error) {
+        console.error(`❌ MongoDB Connection Error: ${error.message}`);
+        process.exit(1);
+    }
+};
+
+module.exports = connectDB;
+</file>
+
+<file path="frontend/index.html">
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitSmart - Professional Expense Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+:root {
+    --bg-color: #f8fafc;
+    --surface-color: rgba(255, 255, 255, 0.25);
+    --border-color: rgba(0, 0, 0, 0.08);
+    --primary: #000000;
+    --primary-hover: #333333;
+    --accent: #10b981;
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --text-main: #000000;
+    --text-muted: #000000;
+    --font-family: 'Playfair Display', Georgia, serif;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+html {
+    background-color: var(--bg-color);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-family);
+    color: var(--text-main);
+}
+
+body {
+    background-color: transparent;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 3rem;
+    position: relative;
+    overflow-x: hidden;
+}
+
+#bg-3d {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: auto; /* Allow mouse interaction for 3d canvas */
+}
+
+header {
+    width: 100%;
+    padding: 3rem 1rem;
+    text-align: center;
+    background: var(--surface-color);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 3rem;
+    box-shadow: var(--shadow-md);
+}
+
+h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.01em;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.container {
+    width: 100%;
+    max-width: 1100px;
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+}
+
+@media (min-width: 900px) {
+    .container {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@keyframes fadeInSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.panel {
+    animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    background: var(--surface-color);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1);
+}
+
+.panel:nth-child(1) { animation-delay: 0.1s; }
+.panel:nth-child(2) { animation-delay: 0.2s; }
+.panel:nth-child(3) { animation-delay: 0.3s; }
+.panel:nth-child(4) { animation-delay: 0.4s; }
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary-hover);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+/* Forms & Inputs */
+input,
+select {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    background: #ffffff;
+    color: var(--text-main);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    outline: none;
+    border-radius: 999px;
+    padding: 0.85rem 1.75rem;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.btn-secondary {
+    background: #ffffff;
+    color: var(--text-main);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.btn-secondary:hover {
+    background: #f8fafc;
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.btn-danger {
+    background: #fef2f2;
+    color: var(--danger);
+    border: 2px solid #fca5a5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.btn-danger:hover {
+    background: #fee2e2;
+    border-color: var(--danger);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.input-group {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.input-group input {
+    flex: 1;
+}
+
+/* Lists and Cards */
+.list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.list-container::-webkit-scrollbar {
+    width: 5px;
+}
+
+.list-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.card {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: var(--radius-md);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+.card-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.card-details h3 {
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.card-details p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+
+.balance-positive {
+    color: var(--accent) !important;
+    font-weight: 500;
+}
+
+.balance-negative {
+    color: var(--text-main) !important;
+    font-weight: 500;
+}
+
+.expense-form-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.settlement-item {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.05);
+    border-left: 3px solid var(--accent);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settlement-text {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.settlement-text strong {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.settlement-amount {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--accent);
+}
+
+/* Benchmark Section */
+.benchmark-panel {
+    grid-column: 1 / -1;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.stat-card {
+    background: var(--surface-color);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    text-align: center;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+}
+
+.controls {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Progress Bar */
+.progress-bg {
+    width: 100%;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin-top: 1rem;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    transition: width 0.2s ease;
+}
+</style>
+</head>
+
+<body>
+    <div id="bg-3d"></div>
+
+    <header>
+        <h1>SplitSmart</h1>
+        <p class="subtitle">Simplified Expense Management & Diagnostics</p>
+        <button class="btn-primary" onclick="resetAll()" style="margin-top: 1rem; padding: 0.5rem 1.5rem;">Reset System
+            Data</button>
+    </header>
+
+    <div class="container">
+        <!-- Friends Setup Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Participants <span class="badge" id="friend-count">0</span></h2>
+            </div>
+
+            <form id="add-friend-form" class="input-group">
+                <input type="text" id="friend-name" placeholder="Enter name" required autocomplete="off">
+                <button type="submit" class="btn-secondary">Add</button>
+            </form>
+
+            <div class="list-container" id="friend-list">
+                <!-- Friend cards injected here -->
+            </div>
+        </div>
+
+        <!-- Expense Entry Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Record Expense</h2>
+            </div>
+
+            <form id="add-expense-form">
+                <input type="text" id="expense-desc" placeholder="Description (e.g. Dinner)" required autocomplete="off"
+                    style="margin-bottom: 1.5rem;">
+
+                <div style="margin-bottom: 1.5rem;">
+                    <span
+                        style="font-size: 0.85rem; font-weight: 500; font-family: var(--font-family); color: var(--text-main);">Paid
+                        By (Enter amounts):</span>
+                    <div id="expense-payers-list"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-top: 0.5rem;">
+                        <span class="subtitle" style="font-size: 0.8rem;">Add participants first</span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <span
+                        style="font-size: 0.85rem; font-weight: 500; font-family: var(--font-family); color: var(--text-main);">Shared
+                        with (Split equally):</span>
+                    <div id="expense-members" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                        <span class="subtitle" style="font-size: 0.8rem;">Add participants to select</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%;">Record Expense Flow</button>
+            </form>
+
+            <div class="list-container" id="expense-list" style="margin-top: 1rem;">
+                <!-- Expenses listed here -->
+            </div>
+        </div>
+
+        <!-- Settlements Panel -->
+        <div class="panel" style="grid-column: 1 / -1;">
+            <div class="panel-header">
+                <h2>Optimized Settlements <span class="badge" id="settlement-count">0</span></h2>
+                <button class="btn-secondary" onclick="calculateSettlements()">Re-calculate</button>
+            </div>
+
+            <div class="list-container" id="settlement-list" style="max-height: none;">
+                <p style="text-align: center; color: var(--text-muted); padding: 1.5rem; width: 100%;">No pending
+                    settlements.</p>
+            </div>
+        </div>
+
+        <!-- Benchmark Dashboard -->
+        <div class="panel benchmark-panel">
+            <div class="panel-header" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0.5rem;">
+                <h2>System Diagnostics</h2>
+            </div>
+            <p class="subtitle" style="margin-bottom: 1rem;">Run local performance testing on the calculation algorithm.
+            </p>
+
+            <div class="controls">
+                <button class="btn-secondary" onclick="runBenchmark(100, 500)">Test Target: 100 Users, 500
+                    Transactions</button>
+                <button class="btn-secondary" onclick="runBenchmark(1000, 5000)">Stress Test: 1K Users, 5K
+                    Transactions</button>
+            </div>
+
+            <div class="progress-bg">
+                <div class="progress-fill" id="benchmark-progress"></div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-time">0.0ms</div>
+                    <div class="stat-label">Calculation Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-render">0.0ms</div>
+                    <div class="stat-label">Render Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-transactions">0</div>
+                    <div class="stat-label">Resolved Debts</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+    <script>
+        // State
+        let friends = [];
+        let expenses = [];
+        let balances = {};
+
+        // DOM Elements
+        const friendForm = document.getElementById('add-friend-form');
+        const friendInput = document.getElementById('friend-name');
+        const friendList = document.getElementById('friend-list');
+        const friendCount = document.getElementById('friend-count');
+        const payersList = document.getElementById('expense-payers-list');
+        
+        const expenseForm = document.getElementById('add-expense-form');
+        const expenseDesc = document.getElementById('expense-desc');
+        const expenseList = document.getElementById('expense-list');
+
+        const settlementList = document.getElementById('settlement-list');
+        const settlementCount = document.getElementById('settlement-count');
+
+        function updateBalancesObject() {
+            balances = {};
+            friends.forEach(f => balances[f.id] = 0);
+        }
+
+        friendForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = friendInput.value.trim();
+            if(name) {
+                addFriend(name);
+                friendInput.value = '';
+                renderFriends();
+                updateExpenseForms();
+            }
+        });
+
+        async function addFriend(name) {
+            const friend = { id: `u_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, name, balance: 0 };
+            friends.push(friend);
+            updateBalancesObject();
+            
+            fetch('/api/friends', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(friend)
+            }).catch(e => console.error(e));
+        }
+
+        function renderFriends() {
+            friendCount.innerText = friends.length;
+            friendList.innerHTML = '';
+            friends.forEach(f => {
+                const initial = f.name.charAt(0).toUpperCase();
+                let bText = "Settled";
+                let bClass = "";
+                let bAmt = 0;
+                
+                if(balances[f.id] > 0.01) { bText = "Gets back"; bClass = "balance-positive"; bAmt = balances[f.id]; }
+                else if(balances[f.id] < -0.01) { bText = "Owes"; bClass = "balance-negative"; bAmt = Math.abs(balances[f.id]); }
+
+                const el = document.createElement('div');
+                el.className = 'card';
+                el.innerHTML = `
+                    <div class="card-info">
+                        <div class="avatar">${initial}</div>
+                        <div class="card-details">
+                            <h3>${f.name}</h3>
+                            <p class="${bClass}">${bText} ${bAmt > 0 ? '₹'+bAmt.toFixed(2) : ''}</p>
+                        </div>
+                    </div>
+                `;
+                friendList.appendChild(el);
+            });
+        }
+
+        function updateExpenseForms() {
+            const membersContainer = document.getElementById('expense-members');
+            payersList.innerHTML = '';
+            membersContainer.innerHTML = '';
+
+            friends.forEach(f => {
+                const cbLabel = document.createElement('label');
+                cbLabel.className = 'member-checkbox';
+                cbLabel.style.display = 'flex';
+                cbLabel.style.alignItems = 'center';
+                cbLabel.style.gap = '0.3rem';
+                cbLabel.style.background = 'var(--surface-color)';
+                cbLabel.style.border = '1px solid var(--border-color)';
+                cbLabel.style.padding = '0.4rem 0.6rem';
+                cbLabel.style.borderRadius = '999px';
+                cbLabel.style.fontSize = '0.8rem';
+                cbLabel.style.cursor = 'pointer';
+                cbLabel.innerHTML = `<input type="checkbox" value="${f.id}" checked> ${f.name}`;
+                membersContainer.appendChild(cbLabel);
+
+                const payerGroup = document.createElement('div');
+                payerGroup.style.display = 'flex';
+                payerGroup.style.alignItems = 'center';
+                payerGroup.style.gap = '0.5rem';
+                payerGroup.innerHTML = `
+                    <span style="font-size: 0.85rem; width: 60px; overflow: hidden; text-overflow: ellipsis;">${f.name}</span>
+                    <input type="number" class="payer-amount-input" data-id="${f.id}" placeholder="₹0" min="0" step="0.01" style="flex: 1; padding: 0.4rem;">
+                `;
+                payersList.appendChild(payerGroup);
+            });
+        }
+
+        expenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if(friends.length < 2) {
+                alert("Please add at least 2 participants.");
+                return;
+            }
+            const desc = expenseDesc.value.trim();
+            
+            const payerInputs = Array.from(document.querySelectorAll('.payer-amount-input'));
+            let payersData = [];
+            let totalAmount = 0;
+            
+            payerInputs.forEach(input => {
+                const amt = parseFloat(input.value);
+                if(amt > 0) {
+                    payersData.push({ id: input.getAttribute('data-id'), amount: amt });
+                    totalAmount += amt;
+                }
+            });
+
+            if (totalAmount <= 0.01) {
+                alert("Please enter the paid amounts for the people who paid.");
+                return;
+            }
+
+            const checkedBoxes = Array.from(document.querySelectorAll('#expense-members input:checked'));
+            const involvedIds = checkedBoxes.map(cb => cb.value);
+
+            if(involvedIds.length === 0) {
+                alert("Please select at least 1 person to share the expense.");
+                return;
+            }
+
+            if(desc && totalAmount > 0) {
+                addExpense(desc, totalAmount, payersData, involvedIds);
+                expenseDesc.value = '';
+                payerInputs.forEach(i => i.value = ''); // Reset inputs
+                recalculateAllBalances();
+                renderExpenses();
+                renderFriends();
+                calculateSettlements();
+            }
+        });
+
+        function addExpense(description, totalAmount, payersData, involvedIds = null) {
+            const exp = { id: `e_${Date.now()}`, description, amount: totalAmount, payersData, involvedIds };
+            expenses.push(exp);
+            
+            fetch('/api/expenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(exp)
+            }).catch(e => console.error(e));
+        }
+
+        function renderExpenses(limit = 50) {
+            expenseList.innerHTML = '';
+            const toShow = expenses.slice(-limit).reverse(); 
+            toShow.forEach(e => {
+                let payerText = 'Multiple People';
+                if(e.payersData && e.payersData.length === 1) {
+                    payerText = friends.find(f => f.id === e.payersData[0].id)?.name || 'Unknown';
+                } else if(!e.payersData && e.payerId) {
+                    payerText = friends.find(f => f.id === e.payerId)?.name || 'Unknown';
+                }
+                const el = document.createElement('div');
+                el.className = 'card';
+                el.innerHTML = `
+                    <div class="card-details">
+                        <h3 style="color: var(--text-main)">${e.description}</h3>
+                        <p>Paid by ${payerText}</p>
+                    </div>
+                    <div style="font-weight: 500;">₹${e.amount.toFixed(2)}</div>
+                `;
+                expenseList.appendChild(el);
+            });
+            if(expenses.length > limit) {
+                const info = document.createElement('p');
+                info.style.textAlign = 'center';
+                info.style.padding = '0.5rem';
+                info.style.fontSize = '0.85rem';
+                info.style.color = 'var(--text-muted)';
+                info.innerText = `+ ${expenses.length - limit} earlier records hidden for performance`;
+                expenseList.appendChild(info);
+            }
+        }
+
+        function recalculateAllBalances() {
+            updateBalancesObject();
+            if(friends.length === 0) return;
+            expenses.forEach(exp => {
+                const involved = (exp.involvedIds && exp.involvedIds.length > 0) ? exp.involvedIds : friends.map(f=>f.id);
+                const splitAmount = exp.amount / involved.length;
+                involved.forEach(id => balances[id] -= splitAmount);
+                
+                if (exp.payersData) {
+                    exp.payersData.forEach(p => balances[p.id] += p.amount);
+                } else if (exp.payerId) {
+                    balances[exp.payerId] += exp.amount;
+                }
+            });
+        }
+
+        function calculateSettlements() {
+            const calcStart = performance.now();
+            recalculateAllBalances();
+
+            let debtors = [], creditors = [];
+            for (const [id, bal] of Object.entries(balances)) {
+                if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
+                else if (bal > 0.01) creditors.push({ id, amount: bal });
+            }
+
+            debtors.sort((a,b) => b.amount - a.amount);
+            creditors.sort((a,b) => b.amount - a.amount);
+
+            let transactions = [];
+            let i = 0, j = 0;
+
+            while (i < debtors.length && j < creditors.length) {
+                let d = debtors[i], c = creditors[j];
+                let minAmt = Math.min(d.amount, c.amount);
+                
+                if(minAmt > 0.01) {
+                    transactions.push({ from: d.id, to: c.id, amount: minAmt });
+                }
+
+                d.amount -= minAmt;
+                c.amount -= minAmt;
+
+                if (Math.abs(d.amount) < 0.01) i++;
+                if (Math.abs(c.amount) < 0.01) j++;
+            }
+
+            const calcEnd = performance.now();
+            renderSettlements(transactions, calcEnd - calcStart);
+            return { transactions, calcTime: calcEnd - calcStart };
+        }
+
+        function renderSettlements(transactions, calcTimeMs = 0) {
+            const renderStart = performance.now();
+            settlementList.innerHTML = '';
+            settlementCount.innerText = transactions.length;
+
+            if(transactions.length === 0) {
+                settlementList.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1.5rem; width: 100%;">No pending settlements.</p>';
+                document.getElementById('stat-render').innerText = `0.0ms`;
+                return;
+            }
+
+            const toRender = transactions.slice(0, 50);
+            toRender.forEach(tx => {
+                const fromName = friends.find(f => f.id === tx.from)?.name || 'Unknown';
+                const toName = friends.find(f => f.id === tx.to)?.name || 'Unknown';
+                const el = document.createElement('div');
+                el.className = 'settlement-item';
+                el.innerHTML = `
+                    <div class="settlement-text">
+                        <strong>${fromName}</strong> pays <strong>${toName}</strong>
+                    </div>
+                    <div class="settlement-amount">₹${tx.amount.toFixed(2)}</div>
+                `;
+                settlementList.appendChild(el);
+            });
+
+            if (transactions.length > 50) {
+                const info = document.createElement('p');
+                info.style.textAlign = 'center';
+                info.style.padding = '0.5rem';
+                info.style.fontSize = '0.85rem';
+                info.style.color = 'var(--text-muted)';
+                info.innerText = `+ ${transactions.length - 50} more transactions hidden in UI`;
+                settlementList.appendChild(info);
+            }
+
+            const renderEnd = performance.now();
+            document.getElementById('stat-time').innerText = `${calcTimeMs.toFixed(1)}ms`;
+            document.getElementById('stat-render').innerText = `${(renderEnd - renderStart).toFixed(1)}ms`;
+            document.getElementById('stat-transactions').innerText = transactions.length;
+        }
+
+        function resetAll() {
+            friends = []; expenses = []; balances = {};
+            fetch('/api/reset', { method: 'POST' }).catch(e => console.error(e));
+            renderFriends(); updateExpenseForms(); renderExpenses(); calculateSettlements();
+            document.getElementById('benchmark-progress').style.width = '0%';
+            document.getElementById('stat-time').innerText = `0.0ms`;
+            document.getElementById('stat-render').innerText = `0.0ms`;
+            document.getElementById('stat-transactions').innerText = `0`;
+        }
+
+        function runBenchmark(numUsers, numExpenses) {
+            resetAll();
+            const pBar = document.getElementById('benchmark-progress');
+            pBar.style.width = '10%';
+
+            setTimeout(() => {
+                for(let i=0; i<numUsers; i++) addFriend(`User ${i+1}`);
+                pBar.style.width = '40%';
+
+                setTimeout(() => {
+                    for(let i=0; i<numExpenses; i++) {
+                        const randomPayer = friends[Math.floor(Math.random() * friends.length)].id;
+                        const randomAmount = Math.floor(Math.random() * 1000) + 10;
+                        addExpense(`System Record #${i+1}`, randomAmount, [{id: randomPayer, amount: randomAmount}]);
+                    }
+                    pBar.style.width = '70%';
+
+                    setTimeout(() => {
+                        const { calcTime } = calculateSettlements();
+                        renderFriends(); 
+                        updateExpenseForms();
+                        renderExpenses(10);
+                        pBar.style.width = '100%';
+                    }, 50);
+                }, 50);
+            }, 50);
+        }
+
+        // Init
+        async function initApp() {
+            try {
+                const res = await fetch('/api/state');
+                const data = await res.json();
+                if (data.friends && data.friends.length > 0) {
+                    friends = data.friends;
+                    expenses = data.expenses || [];
+                    updateBalancesObject();
+                } else if (!data.error) {
+                    addFriend("Alice"); addFriend("Bob"); addFriend("Charlie");
+                }
+            } catch (err) {
+                console.warn("Using offline mode", err);
+                addFriend("Alice"); addFriend("Bob"); addFriend("Charlie");
+            }
+            renderFriends(); updateExpenseForms(); renderExpenses(); calculateSettlements();
+        }
+        initApp();
+
+        // Initialize 3D Background
+        if (typeof VANTA !== 'undefined') {
+            VANTA.NET({
+                el: "#bg-3d",
+                mouseControls: true,
+                touchControls: true,
+                gyroControls: false,
+                minHeight: 200.00,
+                minWidth: 200.00,
+                scale: 1.00,
+                scaleMobile: 1.00,
+                color: 0x2563eb,
+                backgroundColor: 0xf0f5fa,
+                points: 14.00,
+                maxDistance: 22.00,
+                spacing: 18.00,
+                showDots: true
+            });
+        }
+
+</script>
+</body>
+
+</html>
+</file>
+
+<file path=".env.example">
+# Copy this file to .env and fill in your values
+
+# MongoDB connection string
+MONGO_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/expense_splitter
+
+# Set to "production" when deploying to Vercel/Railway/etc.
+NODE_ENV=development
+
+# Port (optional, defaults to 5000)
+PORT=8000
+</file>
+
+<file path="README.md">
+# split-smarter
+# split_smart
+</file>
+
+<file path="backend/server.js">
+require('dotenv').config({ override: true });
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+const connectDB = require('./config/db');
+
+// Import routes
+const groupRoutes = require('./routes/groupRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
+
+const app = express();
+const PORT = process.env.PORT || 8000;
+
+// Connect to MongoDB
+connectDB();
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// API Routes
+app.use('/api', groupRoutes);
+app.use('/api', expenseRoutes);
+
+// DB Viewer Page
+app.get('/db-viewer', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/db-viewer.html'));
+});
+
+// Fallback
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
+app.listen(PORT, () => {
+    console.log(`\n🚀 SplitSmart running at http://localhost:${PORT}`);
+    console.log(`📊 View database at  http://localhost:${PORT}/db-viewer`);
+    console.log(`🔌 API status at     http://localhost:${PORT}/api/status\n`);
+});
+</file>
+
+<file path=".gitignore">
+node_modules/
+.env
+.DS_Store
+.vercel
+</file>
+
+<file path="package.json">
+{
+  "name": "splitsmart-benchmark",
+  "version": "1.0.0",
+  "description": "Gamified expense splitter",
+  "scripts": {
+    "dev": "nodemon backend/server.js",
+    "start": "node backend/server.js",
+    "build": "echo 'No build needed for static files'",
+    "db:setup": "node backend/db-setup.js",
+    "db:view": "node backend/db-view.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "mongodb": "^7.2.0",
+    "mongoose": "^9.5.0",
+    "pg": "^8.11.0"
+  },
+  "author": "",
+  "license": "ISC",
+  "main": "index.js",
+  "keywords": [],
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
+</file>
+
+</files>

@@ -1,0 +1,29 @@
+{
+  "name": "splitsmart-benchmark",
+  "version": "1.0.0",
+  "description": "Gamified expense splitter",
+  "scripts": {
+    "dev": "nodemon backend/server.js",
+    "start": "node backend/server.js",
+    "build": "echo 'No build needed for static files'",
+    "db:setup": "node backend/db-setup.js",
+    "db:view": "node backend/db-view.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.2.0",
+    "mongoose": "^9.5.0",
+    "pg": "^8.11.0"
+  },
+  "author": "",
+  "license": "ISC",
+  "main": "index.js",
+  "keywords": [],
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
