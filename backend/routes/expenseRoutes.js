@@ -77,4 +77,26 @@ router.get('/calculation-logs', auth, async (req, res) => {
     }
 });
 
+const History = require('../models/History');
+
+// Save history record permanently
+router.post('/history', auth, async (req, res) => {
+    try {
+        await History.create({ ...req.body, userId: req.user.id });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get all history
+router.get('/history', auth, async (req, res) => {
+    try {
+        const history = await History.find({ userId: req.user.id }).sort({ createdAt: -1 });
+        res.json(history);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

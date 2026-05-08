@@ -703,67 +703,65 @@ button {
             document.getElementById('history-modal').style.display = 'flex';
             const historyList = document.getElementById('history-list');
             document.querySelector('#history-modal h2').innerText = "Expense History";
+            historyList.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading...</p>';
             
-            if (expenses.length === 0) {
-                historyList.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No history found. Add an expense to see it here.</p>';
-                return;
-            }
-            
-            historyList.innerHTML = '';
-            const toShow = [...expenses].reverse();
-            
-            toShow.forEach((e, idx) => {
-                let payerText = 'Multiple People';
-                if(e.payersData && e.payersData.length === 1) {
-                    payerText = friends.find(f => f.id === e.payersData[0].id)?.name || 'Unknown';
+            try {
+                const res = await apiFetch('/api/history');
+                const historyData = await res.json();
+                
+                if (historyData.length === 0) {
+                    historyList.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No history found. Add an expense to see it here.</p>';
+                    return;
                 }
                 
-                const involvedNames = (e.involvedIds || []).map(id => friends.find(f => f.id === id)?.name || 'Unknown').join(', ');
-                const localTx = getExpenseSettlement(e);
+                historyList.innerHTML = '';
                 
-                let settlementHtml = '';
-                if(localTx.length > 0) {
-                    settlementHtml = localTx.map(tx => {
-                        const fromName = friends.find(f => f.id === tx.from)?.name || 'Unknown';
-                        const toName = friends.find(f => f.id === tx.to)?.name || 'Unknown';
-                        return `<div style="padding: 0.2rem 0; color: var(--text-main);">• <strong>${fromName}</strong> owes <strong>${toName}</strong> ₹${tx.amount.toFixed(2)}</div>`;
-                    }).join('');
-                } else {
-                    settlementHtml = '<div style="color: var(--text-muted);">No debts generated from this expense.</div>';
-                }
+                historyData.forEach((e, idx) => {
+                    let settlementHtml = '';
+                    if(e.settlements && e.settlements.length > 0) {
+                        settlementHtml = e.settlements.map(tx => {
+                            return `<div style="padding: 0.2rem 0; color: var(--text-main);">• <strong>${tx.fromName}</strong> owes <strong>${tx.toName}</strong> ₹${tx.amount.toFixed(2)}</div>`;
+                        }).join('');
+                    } else {
+                        settlementHtml = '<div style="color: var(--text-muted);">No debts generated from this expense.</div>';
+                    }
 
-                const el = document.createElement('div');
-                el.className = 'settlement-item';
-                el.style.flexDirection = 'column';
-                el.style.alignItems = 'flex-start';
-                el.style.cursor = 'pointer';
-                el.style.marginBottom = '0.75rem';
-                el.style.background = 'rgba(255, 255, 255, 0.6)';
-                
-                el.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.2rem;">
-                        <div class="settlement-text" style="font-size: 1.05rem;"><strong>${e.description}</strong></div>
-                        <div class="settlement-amount">₹${e.amount.toFixed(2)}</div>
-                    </div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Tap to view split details</div>
+                    const el = document.createElement('div');
+                    el.className = 'settlement-item';
+                    el.style.flexDirection = 'column';
+                    el.style.alignItems = 'flex-start';
+                    el.style.cursor = 'pointer';
+                    el.style.marginBottom = '0.75rem';
+                    el.style.background = 'rgba(255, 255, 255, 0.6)';
                     
-                    <div style="width: 100%; font-size: 0.9rem; color: var(--text-muted); display: none; margin-top: 0.5rem; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 8px;" id="hist-details-${idx}">
-                        <div style="margin-bottom: 0.5rem;"><strong>Paid By:</strong> ${payerText}</div>
-                        <div style="margin-bottom: 0.5rem;"><strong>Involved:</strong> ${involvedNames}</div>
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                            <strong style="display:block; margin-bottom: 0.5rem; color: var(--primary);">Expense Settlement:</strong>
-                            ${settlementHtml}
+                    el.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.2rem;">
+                            <div class="settlement-text" style="font-size: 1.05rem;"><strong>${e.description}</strong></div>
+                            <div class="settlement-amount">₹${e.amount.toFixed(2)}</div>
                         </div>
-                    </div>
-                `;
-                
-                el.onclick = () => {
-                    const details = document.getElementById(`hist-details-${idx}`);
-                    details.style.display = details.style.display === 'none' ? 'block' : 'none';
-                };
-                
-                historyList.appendChild(el);
-            });
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Tap to view split details</div>
+                        
+                        <div style="width: 100%; font-size: 0.9rem; color: var(--text-muted); display: none; margin-top: 0.5rem; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 8px;" id="hist-details-${idx}">
+                            <div style="margin-bottom: 0.5rem;"><strong>Paid By:</strong> ${e.payerText}</div>
+                            <div style="margin-bottom: 0.5rem;"><strong>Involved:</strong> ${e.involvedNames}</div>
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                                <strong style="display:block; margin-bottom: 0.5rem; color: var(--primary);">Expense Settlement:</strong>
+                                ${settlementHtml}
+                            </div>
+                        </div>
+                    `;
+                    
+                    el.onclick = () => {
+                        const details = document.getElementById(`hist-details-${idx}`);
+                        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+                    };
+                    
+                    historyList.appendChild(el);
+                });
+            } catch (err) {
+                console.error(err);
+                historyList.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 1.5rem;">Failed to load history.</p>';
+            }
         }
 
         function closeHistory() {
@@ -928,6 +926,34 @@ button {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(exp)
+            }).catch(e => console.error(e));
+
+            // Generate history
+            let payerText = 'Multiple People';
+            if(exp.payersData && exp.payersData.length === 1) {
+                payerText = friends.find(f => f.id === exp.payersData[0].id)?.name || 'Unknown';
+            } else if(!exp.payersData && exp.payerId) {
+                payerText = friends.find(f => f.id === exp.payerId)?.name || 'Unknown';
+            }
+            const invIds = exp.involvedIds && exp.involvedIds.length > 0 ? exp.involvedIds : friends.map(f=>f.id);
+            const involvedNames = invIds.map(id => friends.find(f => f.id === id)?.name || 'Unknown').join(', ');
+            const localTx = getExpenseSettlement(exp);
+            const settlements = localTx.map(tx => ({
+                fromName: friends.find(f => f.id === tx.from)?.name || 'Unknown',
+                toName: friends.find(f => f.id === tx.to)?.name || 'Unknown',
+                amount: tx.amount
+            }));
+            
+            apiFetch('/api/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    description,
+                    amount: totalAmount,
+                    payerText,
+                    involvedNames,
+                    settlements
+                })
             }).catch(e => console.error(e));
         }
 
