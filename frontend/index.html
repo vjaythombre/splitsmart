@@ -16,25 +16,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
 :root {
-    --bg-color: #f5eedf;
-    --surface-color: #f5eedf;
-    --border-color: #8c7355;
-    --primary: #3b2b20;
-    --primary-hover: #1f1510;
-    --accent: #2e4a3d;
-    --danger: #b83b2b;
-    --danger-hover: #8f2b1e;
-    --text-main: #2a201a;
-    --text-muted: #5e4c3e;
-    --font-family: 'Playfair Display', Georgia, serif;
-    --radius-md: 2px;
-    --radius-lg: 4px;
-    --shadow-sm: none;
-    --shadow-md: none;
+    --bg-color: #121212;
+    --surface-color: #1a1a1a;
+    --border-color: #333333;
+    --primary: #f97316;
+    --primary-hover: #ea580c;
+    --accent: #ea580c;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --font-family: 'Inter', sans-serif;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 10px 15px rgba(0, 0, 0, 0.6);
 }
 
 html {
     background-color: var(--bg-color);
+    background-image: url('/bg-naruto.png');
+    background-size: 400px;
+    background-repeat: repeat;
+    background-attachment: fixed;
 }
 
 * {
@@ -62,10 +66,12 @@ header {
     width: 100%;
     padding: 2rem 1rem;
     text-align: center;
-    background: #faf6ed;
-    border-bottom: 2px solid var(--border-color);
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 2px solid var(--primary);
     margin-bottom: 3rem;
-    box-shadow: 0 4px 6px rgba(59, 43, 32, 0.05);
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.15);
 }
 
 h1 {
@@ -110,20 +116,22 @@ h1 {
 
 .panel {
     animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-    background: #faf6ed;
+    background: rgba(26, 26, 26, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 2rem;
-    box-shadow: 4px 4px 0 rgba(140, 115, 85, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     transition: transform 0.3s ease;
     position: relative;
+    overflow: hidden;
 }
 .panel::before {
     content: '';
     position: absolute;
-    top: 4px; left: 4px; right: 4px; bottom: 4px;
-    border: 1px solid rgba(140, 115, 85, 0.2);
-    pointer-events: none;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: var(--primary);
 }
 
 .panel:hover {
@@ -206,41 +214,39 @@ button {
 
 .btn-primary {
     background: var(--primary);
-    color: #f5eedf;
+    color: #121212;
     border: 1px solid var(--primary);
-    box-shadow: 3px 3px 0 var(--border-color);
+    box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
 }
 
 .btn-primary:hover {
     background: var(--primary-hover);
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0 var(--border-color);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.6);
 }
 
 .btn-secondary {
-    background: #faf6ed;
+    background: transparent;
     color: var(--primary);
-    border: 1px solid var(--border-color);
-    box-shadow: 3px 3px 0 var(--border-color);
+    border: 1px solid var(--primary);
+    box-shadow: none;
 }
 
 .btn-secondary:hover {
-    background: #f5eedf;
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0 var(--border-color);
+    background: rgba(249, 115, 22, 0.1);
+    transform: translateY(-2px);
 }
 
 .btn-danger {
-    background: #fdf5f4;
+    background: transparent;
     color: var(--danger);
     border: 1px solid var(--danger);
-    box-shadow: 3px 3px 0 var(--danger);
+    box-shadow: none;
 }
 
 .btn-danger:hover {
-    background: #f9e8e6;
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0 var(--danger);
+    background: rgba(220, 38, 38, 0.1);
+    transform: translateY(-2px);
 }
 
 .input-group {
@@ -486,10 +492,11 @@ button {
 
     
     <header>
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1rem;">
-            <img src="/vintage-logo.png" alt="SplitSmart Logo" style="height: 100px; width: auto; max-width: 100%; object-fit: contain;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.25rem;">
+            <img src="/icon-192.png" alt="SplitSmart Logo" style="width: 48px; height: 48px; border-radius: 12px; box-shadow: 0 0 10px rgba(249,115,22,0.5);">
+            <h1 style="margin-bottom: 0;">SplitSmart</h1>
         </div>
-        <p class="subtitle" style="font-style: italic; letter-spacing: 0.05em; color: var(--danger);">Divide With Wisdom</p>
+        <p class="subtitle" style="letter-spacing: 0.05em; color: var(--primary);">Ninja Expense Management</p>
         <div id="user-controls" style="display: none; gap: 1rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap;">
             <button class="btn-secondary" onclick="showHistory()" style="padding: 0.5rem 1.5rem;">View History</button>
             <button class="btn-primary" onclick="resetAll()" style="padding: 0.5rem 1.5rem;">Reset Data</button>
