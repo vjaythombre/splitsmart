@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SplitSmart - Professional Expense Tracker</title>
     <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="SplitSmart">
@@ -496,7 +497,10 @@ button {
 
     
     <header>
-        <h1>SplitSmart</h1>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.25rem;">
+            <img src="/icon-192.png" alt="SplitSmart Logo" style="width: 48px; height: 48px; border-radius: 12px; box-shadow: var(--shadow-sm);">
+            <h1 style="margin-bottom: 0;">SplitSmart</h1>
+        </div>
         <p class="subtitle">Simplified Expense Management & Diagnostics</p>
         <div id="user-controls" style="display: none; gap: 1rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
             <button class="btn-secondary" onclick="showHistory()" style="padding: 0.5rem 1.5rem;">View History</button>
