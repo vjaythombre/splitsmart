@@ -469,11 +469,80 @@ button {
     text-decoration: underline;
 }
 
+/* Pokemon Background Sprites */
+.pokemon-sprite {
+    position: fixed;
+    z-index: -1;
+    pointer-events: none;
+    image-rendering: pixelated;
+}
+
+#charizard {
+    top: 10%;
+    width: 120px;
+    height: auto;
+    animation: flyCharizard 25s linear infinite;
+}
+
+@keyframes flyCharizard {
+    0% { left: -200px; transform: translateY(0px) scaleX(-1); }
+    25% { transform: translateY(-30px) scaleX(-1); }
+    50% { transform: translateY(0px) scaleX(-1); }
+    75% { transform: translateY(-20px) scaleX(-1); }
+    100% { left: 110vw; transform: translateY(0px) scaleX(-1); }
+}
+
+#pikachu {
+    bottom: 5%;
+    width: 60px;
+    height: auto;
+    animation: runPikachu 15s ease-in-out infinite alternate;
+}
+
+@keyframes runPikachu {
+    0% { left: 10%; transform: translateY(0); }
+    20% { transform: translateY(-20px); }
+    40% { left: 40%; transform: translateY(0); }
+    60% { transform: translateY(-20px); }
+    80% { left: 70%; transform: translateY(0); }
+    100% { left: 90%; transform: translateY(0); }
+}
+
+#bulbasaur {
+    bottom: 2%;
+    left: 5%;
+    width: 50px;
+    height: auto;
+    animation: chill 4s ease-in-out infinite alternate;
+}
+
+#squirtle {
+    bottom: 3%;
+    right: 8%;
+    width: 50px;
+    height: auto;
+    animation: chill 3.5s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes chill {
+    0% { transform: translateY(0) scaleX(var(--face-dir, 1)); }
+    100% { transform: translateY(-10px) scaleX(var(--face-dir, 1)); }
+}
+
+#squirtle { --face-dir: -1; }
+#bulbasaur { --face-dir: 1; }
+
 </style>
 </head>
 
 <body>
     <div id="bg-3d"></div>
+
+    <!-- Animated Pokemon Background -->
+    <img id="charizard" class="pokemon-sprite" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/6.gif" alt="Charizard">
+    <img id="pikachu" class="pokemon-sprite" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif" alt="Pikachu">
+    <img id="bulbasaur" class="pokemon-sprite" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/1.gif" alt="Bulbasaur">
+    <img id="squirtle" class="pokemon-sprite" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/7.gif" alt="Squirtle">
 
     <div id="auth-modal" class="modal-overlay">
         <div class="modal-content" style="background: rgba(255, 255, 255, 0.9);">
