@@ -19,7 +19,7 @@ router.post('/register', async (req, res) => {
         user = new User({ username, password: hashedPassword });
         await user.save();
 
-        const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
+        const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET || 'fallback_secret_v2', { expiresIn: '7d' });
         res.json({ token, username: user.username });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -38,7 +38,7 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
+        const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET || 'fallback_secret_v2', { expiresIn: '7d' });
         res.json({ token, username: user.username });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -51,7 +51,7 @@ router.get('/me', async (req, res) => {
     if (!token) return res.status(401).json({ error: 'No token' });
 
     try {
-        const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET || 'fallback_secret');
+        const decoded = jwt.verify(token.replace('Bearer ', ''), process.env.JWT_SECRET || 'fallback_secret_v2');
         res.json({ id: decoded.id, username: decoded.username });
     } catch (err) {
         res.status(401).json({ error: 'Invalid token' });

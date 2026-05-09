@@ -734,12 +734,19 @@ button {
                     el.style.marginBottom = '0.75rem';
                     el.style.background = 'rgba(255, 255, 255, 0.6)';
                     
+                    const savedDate = new Date(e.createdAt || Date.now());
+                    const dateOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+                    const formattedDate = savedDate.toLocaleString('en-IN', dateOptions);
+
                     el.innerHTML = `
                         <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.2rem;">
                             <div class="settlement-text" style="font-size: 1.05rem;"><strong>${e.description}</strong></div>
                             <div class="settlement-amount">₹${e.amount.toFixed(2)}</div>
                         </div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Tap to view split details</div>
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Tap to view split details</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Saved on ${formattedDate} (IST)</div>
+                        </div>
                         
                         <div style="width: 100%; font-size: 0.9rem; color: var(--text-muted); display: none; margin-top: 0.5rem; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 8px;" id="hist-details-${idx}">
                             <div style="margin-bottom: 0.5rem;"><strong>Paid By:</strong> ${e.payerText}</div>
