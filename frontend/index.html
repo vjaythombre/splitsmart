@@ -16,21 +16,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
 :root {
-    --bg-color: #f8fafc;
-    --surface-color: rgba(255, 255, 255, 0.25);
-    --border-color: rgba(0, 0, 0, 0.08);
-    --primary: #000000;
-    --primary-hover: #333333;
-    --accent: #10b981;
-    --danger: #ef4444;
-    --danger-hover: #dc2626;
-    --text-main: #000000;
-    --text-muted: #000000;
+    --bg-color: #f5eedf;
+    --surface-color: #f5eedf;
+    --border-color: #8c7355;
+    --primary: #3b2b20;
+    --primary-hover: #1f1510;
+    --accent: #2e4a3d;
+    --danger: #b83b2b;
+    --danger-hover: #8f2b1e;
+    --text-main: #2a201a;
+    --text-muted: #5e4c3e;
     --font-family: 'Playfair Display', Georgia, serif;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    --radius-md: 2px;
+    --radius-lg: 4px;
+    --shadow-sm: none;
+    --shadow-md: none;
 }
 
 html {
@@ -56,26 +56,16 @@ body {
     overflow-x: hidden;
 }
 
-#bg-3d {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -1;
-    pointer-events: auto; /* Allow mouse interaction for 3d canvas */
-}
+
 
 header {
     width: 100%;
-    padding: 3rem 1rem;
+    padding: 2rem 1rem;
     text-align: center;
-    background: var(--surface-color);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border-color);
+    background: #faf6ed;
+    border-bottom: 2px solid var(--border-color);
     margin-bottom: 3rem;
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 6px rgba(59, 43, 32, 0.05);
 }
 
 h1 {
@@ -120,14 +110,20 @@ h1 {
 
 .panel {
     animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-    background: var(--surface-color);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: #faf6ed;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 2rem;
-    box-shadow: var(--shadow-md);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 4px 4px 0 rgba(140, 115, 85, 0.2);
+    transition: transform 0.3s ease;
+    position: relative;
+}
+.panel::before {
+    content: '';
+    position: absolute;
+    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    border: 1px solid rgba(140, 115, 85, 0.2);
+    pointer-events: none;
 }
 
 .panel:hover {
@@ -198,58 +194,53 @@ button {
     cursor: pointer;
     border: none;
     outline: none;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     padding: 0.85rem 1.75rem;
     font-size: 0.95rem;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    transition: all 0.2s;
+    font-family: var(--font-family);
 }
 
 .btn-primary {
     background: var(--primary);
-    color: white;
-    border: none;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    color: #f5eedf;
+    border: 1px solid var(--primary);
+    box-shadow: 3px 3px 0 var(--border-color);
 }
 
 .btn-primary:hover {
     background: var(--primary-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--border-color);
 }
 
 .btn-secondary {
-    background: #ffffff;
-    color: var(--text-main);
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    background: #faf6ed;
+    color: var(--primary);
+    border: 1px solid var(--border-color);
+    box-shadow: 3px 3px 0 var(--border-color);
 }
 
 .btn-secondary:hover {
-    background: #f8fafc;
-    border-color: var(--primary);
-    color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: #f5eedf;
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--border-color);
 }
 
 .btn-danger {
-    background: #fef2f2;
+    background: #fdf5f4;
     color: var(--danger);
-    border: 2px solid #fca5a5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--danger);
+    box-shadow: 3px 3px 0 var(--danger);
 }
 
 .btn-danger:hover {
-    background: #fee2e2;
-    border-color: var(--danger);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    background: #f9e8e6;
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--danger);
 }
 
 .input-group {
@@ -468,8 +459,6 @@ button {
 </head>
 
 <body>
-    <div id="bg-3d"></div>
-
     <div id="auth-modal" class="modal-overlay">
         <div class="modal-content" style="background: rgba(255, 255, 255, 0.9);">
             <h2 id="auth-title">Login</h2>
@@ -497,12 +486,11 @@ button {
 
     
     <header>
-        <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.25rem;">
-            <img src="/icon-192.png" alt="SplitSmart Logo" style="width: 48px; height: 48px; border-radius: 12px; box-shadow: var(--shadow-sm);">
-            <h1 style="margin-bottom: 0;">SplitSmart</h1>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1rem;">
+            <img src="/vintage-logo.png" alt="SplitSmart Logo" style="height: 100px; width: auto; max-width: 100%; object-fit: contain;">
         </div>
-        <p class="subtitle">Simplified Expense Management & Diagnostics</p>
-        <div id="user-controls" style="display: none; gap: 1rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
+        <p class="subtitle" style="font-style: italic; letter-spacing: 0.05em; color: var(--danger);">Divide With Wisdom</p>
+        <div id="user-controls" style="display: none; gap: 1rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap;">
             <button class="btn-secondary" onclick="showHistory()" style="padding: 0.5rem 1.5rem;">View History</button>
             <button class="btn-primary" onclick="resetAll()" style="padding: 0.5rem 1.5rem;">Reset Data</button>
             <button class="btn-danger" onclick="logout()" style="padding: 0.5rem 1.5rem;">Logout</button>
@@ -611,8 +599,6 @@ button {
             </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
     <script>
         
         let token = localStorage.getItem('token');
@@ -1195,25 +1181,7 @@ button {
             });
         }
 
-        // Initialize 3D Background
-        if (typeof VANTA !== 'undefined') {
-            VANTA.NET({
-                el: "#bg-3d",
-                mouseControls: true,
-                touchControls: true,
-                gyroControls: false,
-                minHeight: 200.00,
-                minWidth: 200.00,
-                scale: 1.00,
-                scaleMobile: 1.00,
-                color: 0x2563eb,
-                backgroundColor: 0xf0f5fa,
-                points: 14.00,
-                maxDistance: 22.00,
-                spacing: 18.00,
-                showDots: true
-            });
-        }
+
 
 </script>
 </body>
