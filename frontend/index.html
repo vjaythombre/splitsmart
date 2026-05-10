@@ -35,7 +35,7 @@
 
 html {
     background-color: var(--bg-color);
-    background-image: url('/bg-pokemon-landscape.jpg');
+    background-image: url('/bg-pokemon-landscape-highres.jpg');
     background-size: cover;
     background-position: center bottom;
     background-attachment: fixed;
@@ -124,10 +124,10 @@ h1 {
 
 .panel {
     animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-    background: rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: var(--radius-lg);
     padding: 2rem;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
@@ -491,6 +491,7 @@ button {
     z-index: -1;
     pointer-events: none;
     image-rendering: pixelated;
+    filter: drop-shadow(0px 10px 8px rgba(0, 0, 0, 0.5));
 }
 
 #charizard {
