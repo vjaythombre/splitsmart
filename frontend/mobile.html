@@ -78,9 +78,13 @@
             </div>
 
             <h4 class="font-semibold text-sm text-slate-500 mb-2">How to Settle (Optimized)</h4>
-            <div id="mobile-settlements" class="flex flex-col gap-2">
+            <div id="mobile-settlements" class="flex flex-col gap-2 mb-6">
                 <p class="text-sm text-slate-400">No pending settlements.</p>
             </div>
+            
+            <button onclick="mobileResetAll()" class="w-full bg-red-50 text-red-600 font-bold rounded-xl py-3 border border-red-100 active:scale-95 transition flex justify-center items-center gap-2 mt-4">
+                <span class="material-symbols-outlined">delete_forever</span> Reset Data
+            </button>
         </div>
 
     </main>
@@ -168,7 +172,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        async function mobileAddFriend() {
+        function mobileAddFriend() {
             const input = document.getElementById('add-friend-input');
             const name = input.value.trim();
             if(!name) return;
@@ -177,15 +181,18 @@
             friends.push(newFriend);
             input.value = '';
             
-            await apiFetch('/api/state', {
+            // Optimistic UI Update
+            renderMobileApp();
+            
+            // Background Sync
+            apiFetch('/api/state', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ friends, expenses })
-            });
-            renderMobileApp();
+            }).catch(console.error);
         }
 
-        async function submitExpense() {
+        function submitExpense() {
             const desc = document.getElementById('expense-desc').value.trim();
             
             // Get Payers
@@ -231,23 +238,19 @@
             
             expenses.push(exp);
             
-            // Save state immediately
-            await apiFetch('/api/expenses', {
+            // Reset form & Optimistic UI Update
+            document.getElementById('expense-desc').value = '';
+            payerInputs.forEach(i => i.value = '');
+            renderMobileApp();
+            
+            // Background Sync
+            apiFetch('/api/expenses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(exp)
-            });
-
-            // Reset form
-            document.getElementById('expense-desc').value = '';
-            payerInputs.forEach(i => i.value = '');
+            }).catch(console.error);
             
-            renderMobileApp();
-            
-            // Calculate history in background
             calculateAndSaveHistory(exp);
-            
-            alert("Expense Added Successfully!");
         }
 
         function calculateAndSaveHistory(exp) {
