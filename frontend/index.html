@@ -9,7 +9,7 @@
     <script>
         // Redirect to the premium mobile app if running in standalone PWA mode
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-            if (localStorage.getItem('splitsmart_token')) {
+            if (localStorage.getItem('token')) {
                 window.location.replace('/mobile.html');
             }
         }
@@ -759,6 +759,12 @@ button {
                 localStorage.setItem('token', token);
                 document.getElementById('auth-modal').style.display = 'none';
                 document.getElementById('user-controls').style.display = 'flex';
+                
+                if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                    window.location.replace('/mobile.html');
+                    return;
+                }
+                
                 initApp();
             } catch (err) {
                 alert(err.message);

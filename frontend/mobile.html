@@ -73,7 +73,7 @@
         
         <h3 class="font-bold text-lg mb-4 px-2">Advanced Settings</h3>
         <button onclick="mobileResetAll()" class="w-full bg-red-50 text-red-600 font-bold rounded-xl py-4 border border-red-100 mb-3 active:scale-95 transition">Reset All Data</button>
-        <button onclick="localStorage.removeItem('splitsmart_token'); window.location.href='/index.html';" class="w-full bg-slate-100 text-slate-700 font-bold rounded-xl py-4 border border-slate-200 active:scale-95 transition">Logout</button>
+        <button onclick="localStorage.removeItem('token'); window.location.href='/index.html';" class="w-full bg-slate-100 text-slate-700 font-bold rounded-xl py-4 border border-slate-200 active:scale-95 transition">Logout</button>
     </main>
 
     <!-- Bottom Nav -->
@@ -128,7 +128,7 @@
     </div>
 
     <script>
-        let token = localStorage.getItem('splitsmart_token');
+        let token = localStorage.getItem('token');
         if (!token) window.location.replace('/index.html');
 
         let friends = [];
@@ -140,7 +140,7 @@
             options.headers['Authorization'] = `Bearer ${token}`;
             const res = await fetch(url, options);
             if (res.status === 401 || res.status === 403) {
-                localStorage.removeItem('splitsmart_token');
+                localStorage.removeItem('token');
                 window.location.replace('/index.html');
             }
             return res.json();
