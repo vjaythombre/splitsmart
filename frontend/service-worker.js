@@ -1,4 +1,4 @@
-const CACHE_NAME = 'splitsmart-cache-v5';
+const CACHE_NAME = 'splitsmart-cache-v6';
 const urlsToCache = [
   '/',
   '/index.html',
