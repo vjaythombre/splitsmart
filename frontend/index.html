@@ -587,6 +587,15 @@ button {
         </div>
     </header>
 
+    <div style="max-width: 1200px; margin: 0 auto 2rem auto; padding: 0 2rem;">
+        <div class="panel" style="margin-bottom: 0;">
+            <div class="panel-header" style="margin-bottom: 1rem; padding-bottom: 1rem;">
+                <h2 style="font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Main Event / Trip Name</h2>
+            </div>
+            <input type="text" id="desktop-event-name" placeholder="e.g. Goa Trip 2026" autocomplete="off" style="font-size: 1.2rem; font-weight: 700; padding: 0.8rem 1rem; border-color: var(--primary); background: rgba(255,255,255,0.8);">
+        </div>
+    </div>
+
 
     <div class="container">
         <!-- Friends Setup Panel -->
@@ -975,11 +984,12 @@ button {
                     if (Math.abs(c.amount) < 0.01) j++;
                 }
 
+                const eventName = localStorage.getItem('eventName') || 'Group Calculation';
                 await apiFetch('/api/history', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        description: `Group Calculation (${expenses.length} items)`,
+                        description: `${eventName} (${expenses.length} items)`,
                         amount: totalAmt,
                         payerText: 'Multiple',
                         involvedNames: involvedNames,
@@ -1306,6 +1316,12 @@ button {
         // Init
         async function initApp() {
             try {
+                const eventNameInput = document.getElementById('desktop-event-name');
+                if(eventNameInput) {
+                    eventNameInput.value = localStorage.getItem('eventName') || '';
+                    eventNameInput.addEventListener('input', e => localStorage.setItem('eventName', e.target.value));
+                }
+
                 const res = await apiFetch('/api/state');
                 const data = await res.json();
                 if (data.friends && data.friends.length > 0) {
