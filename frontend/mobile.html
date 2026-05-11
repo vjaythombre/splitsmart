@@ -140,6 +140,7 @@
         let friends = [];
         let expenses = [];
         let balances = {};
+        let savedHistory = [];
 
         async function apiFetch(url, options = {}) {
             options.headers = options.headers || {};
@@ -157,6 +158,7 @@
                 const data = await apiFetch('/api/state');
                 friends = data.friends || [];
                 expenses = data.expenses || [];
+                savedHistory = await apiFetch('/api/history');
                 renderMobileApp();
             } catch (error) {
                 console.error("Error loading app state:", error);
@@ -244,13 +246,11 @@
             renderMobileApp();
             
             // Background Sync
-            apiFetch('/api/expenses', {
+            apiFetch('/api/state', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(exp)
+                body: JSON.stringify({ friends, expenses })
             }).catch(console.error);
-            
-            calculateAndSaveHistory(exp);
         }
 
         function calculateAndSaveHistory(exp) {
@@ -371,85 +371,112 @@
             // 3. Update History Tab
             const expList = document.getElementById('mobile-expenses');
             expList.innerHTML = '';
-            if(expenses.length === 0) {
-                expList.innerHTML = '<p class="text-center text-slate-500 py-8">No expenses yet.</p>';
-            } else {
-                [...expenses].reverse().slice(0, 30).forEach(e => {
-                    let payerText = 'Multiple People';
-                    if(e.payersData && e.payersData.length === 1) {
-                        payerText = friends.find(f => f.id === e.payersData[0].id)?.name || 'Unknown';
-                    }
+            
+            // Render Active Session Card
+            if(expenses.length > 0) {
+                const totalAmt = expenses.reduce((sum, e) => sum + e.amount, 0);
+                let expenseBreakdownHTML = expenses.map(e => {
+                    return `<div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0"><span class="text-slate-600 text-sm">${e.description}</span><span class="font-semibold text-slate-800 text-sm">₹${e.amount.toFixed(2)}</span></div>`;
+                }).join('');
+                
+                // Active session settlements
+                let debtors = [], creditors = [];
+                for (const [id, bal] of Object.entries(balances)) {
+                    if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
+                    else if (bal > 0.01) creditors.push({ id, amount: bal });
+                }
+                debtors.sort((a,b) => b.amount - a.amount);
+                creditors.sort((a,b) => b.amount - a.amount);
+                let txs = [];
+                let i = 0, j = 0;
+                while (i < debtors.length && j < creditors.length) {
+                    let d = debtors[i], c = creditors[j];
+                    let minAmt = Math.min(d.amount, c.amount);
+                    if(minAmt > 0.01) txs.push({ from: d.id, to: c.id, amount: minAmt });
+                    d.amount -= minAmt; c.amount -= minAmt;
+                    if (Math.abs(d.amount) < 0.01) i++;
+                    if (Math.abs(c.amount) < 0.01) j++;
+                }
+                
+                let txHTML = txs.map(tx => {
+                    const fromName = friends.find(f => f.id === tx.from)?.name || 'Unknown';
+                    const toName = friends.find(f => f.id === tx.to)?.name || 'Unknown';
+                    return `<div class="text-sm text-slate-600 border-b border-slate-200 last:border-0 py-1"><span class="font-semibold text-slate-800">${fromName}</span> owes <span class="font-semibold text-slate-800">${toName}</span> <span class="font-bold text-blue-600">₹${tx.amount.toFixed(2)}</span></div>`;
+                }).join('');
+                if(txs.length === 0) txHTML = '<div class="text-sm text-emerald-600 py-1">Everyone is settled up!</div>';
+
+                expList.innerHTML += `
+                <div class="glass-card p-4 active:scale-[0.98] transition cursor-pointer border-blue-200 bg-blue-50/20" onclick="toggleHistoryDetails('active_session')">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-lg shadow-md">
+                                <span class="material-symbols-outlined text-[20px]">sync</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800">Current Calculation</h4>
+                                <p class="text-xs text-blue-600 font-semibold">${expenses.length} expenses recorded</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <div class="font-bold text-lg text-slate-800">₹${totalAmt.toFixed(2)}</div>
+                            <span class="material-symbols-outlined text-slate-400 transition-transform duration-200" id="icon-active_session">expand_more</span>
+                        </div>
+                    </div>
                     
-                    // Parse Date
-                    const timestamp = parseInt(e.id.split('_')[1]);
-                    const dateStr = isNaN(timestamp) ? 'Unknown Date' : new Date(timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+                    <div class="mt-4 pt-4 border-t border-slate-200 hidden" id="details-active_session">
+                        <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Expenses</h5>
+                        <div class="bg-white rounded-lg px-3 py-1 border border-slate-100 mb-3">
+                            ${expenseBreakdownHTML}
+                        </div>
+                        <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Final Settlements</h5>
+                        <div class="bg-blue-50 rounded-lg px-3 py-1 border border-blue-100">
+                            ${txHTML}
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-3 text-center italic">Hit Reset Data to archive this calculation.</p>
+                    </div>
+                </div>`;
+            }
+            
+            // Render Saved Sessions
+            if(savedHistory.length > 0) {
+                [...savedHistory].forEach(h => {
+                    const dateStr = new Date(h.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
                     
-                    // Calculate Specific Settlements for this Expense
-                    let tempBalances = {};
-                    friends.forEach(f => tempBalances[f.id] = 0);
-                    const involved = (e.involvedIds && e.involvedIds.length > 0) ? e.involvedIds : friends.map(f=>f.id);
-                    const splitAmount = e.amount / involved.length;
-                    involved.forEach(id => tempBalances[id] -= splitAmount);
-                    if (e.payersData) {
-                        e.payersData.forEach(p => tempBalances[p.id] += p.amount);
-                    } else if (e.payerId) {
-                        tempBalances[e.payerId] += e.amount;
-                    }
-                    let debtors = [], creditors = [];
-                    for (const [id, bal] of Object.entries(tempBalances)) {
-                        if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
-                        else if (bal > 0.01) creditors.push({ id, amount: bal });
-                    }
-                    debtors.sort((a,b) => b.amount - a.amount);
-                    creditors.sort((a,b) => b.amount - a.amount);
-                    let txs = [];
-                    let i = 0, j = 0;
-                    while (i < debtors.length && j < creditors.length) {
-                        let d = debtors[i], c = creditors[j];
-                        let minAmt = Math.min(d.amount, c.amount);
-                        if(minAmt > 0.01) txs.push({ from: d.id, to: c.id, amount: minAmt });
-                        d.amount -= minAmt; c.amount -= minAmt;
-                        if (Math.abs(d.amount) < 0.01) i++;
-                        if (Math.abs(c.amount) < 0.01) j++;
-                    }
-                    
-                    let txHTML = txs.map(tx => {
-                        const fromName = friends.find(f => f.id === tx.from)?.name || 'Unknown';
-                        const toName = friends.find(f => f.id === tx.to)?.name || 'Unknown';
-                        return `<div class="text-sm text-slate-600 border-b border-slate-200 last:border-0 py-1"><span class="font-semibold text-slate-800">${fromName}</span> owes <span class="font-semibold text-slate-800">${toName}</span> <span class="font-bold text-blue-600">₹${tx.amount.toFixed(2)}</span></div>`;
+                    let txHTML = h.settlements.map(tx => {
+                        return `<div class="text-sm text-slate-600 border-b border-slate-200 last:border-0 py-1"><span class="font-semibold text-slate-800">${tx.fromName}</span> owes <span class="font-semibold text-slate-800">${tx.toName}</span> <span class="font-bold text-blue-600">₹${tx.amount.toFixed(2)}</span></div>`;
                     }).join('');
-                    if(txs.length === 0) txHTML = '<div class="text-sm text-emerald-600 py-1">Everyone paid their exact share!</div>';
+                    if(h.settlements.length === 0) txHTML = '<div class="text-sm text-emerald-600 py-1">Everyone paid their exact share!</div>';
                     
                     expList.innerHTML += `
-                    <div class="glass-card p-4 active:scale-[0.98] transition cursor-pointer" onclick="toggleHistoryDetails('${e.id}')">
+                    <div class="glass-card p-4 active:scale-[0.98] transition cursor-pointer mt-3" onclick="toggleHistoryDetails('${h._id}')">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg border border-blue-100 shadow-inner">
-                                    ${e.description.charAt(0).toUpperCase()}
+                                <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-lg border border-slate-200">
+                                    <span class="material-symbols-outlined text-[20px]">inventory_2</span>
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-slate-800">${e.description}</h4>
-                                    <p class="text-xs text-slate-500 font-medium">Paid by ${payerText}</p>
+                                    <h4 class="font-bold text-slate-800">${h.description}</h4>
+                                    <p class="text-[10px] text-slate-500 font-medium">${dateStr}</p>
                                 </div>
                             </div>
                             <div class="flex flex-col items-end">
-                                <div class="font-bold text-lg text-slate-800">₹${e.amount.toFixed(2)}</div>
-                                <span class="material-symbols-outlined text-slate-400 transition-transform duration-200" id="icon-${e.id}">expand_more</span>
+                                <div class="font-bold text-lg text-slate-800">₹${h.amount.toFixed(2)}</div>
+                                <span class="material-symbols-outlined text-slate-400 transition-transform duration-200" id="icon-${h._id}">expand_more</span>
                             </div>
                         </div>
                         
-                        <!-- Expandable Details -->
-                        <div class="mt-4 pt-4 border-t border-slate-100 hidden" id="details-${e.id}">
-                            <div class="flex items-center gap-2 text-xs text-slate-400 mb-3 font-medium">
-                                <span class="material-symbols-outlined text-[14px]">calendar_today</span> ${dateStr}
-                            </div>
-                            <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Settlement for this bill</h5>
+                        <div class="mt-4 pt-4 border-t border-slate-100 hidden" id="details-${h._id}">
+                            <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Saved Settlements</h5>
                             <div class="bg-slate-50 rounded-lg px-3 py-1 border border-slate-100">
                                 ${txHTML}
                             </div>
                         </div>
                     </div>`;
                 });
+            }
+            
+            if(expenses.length === 0 && savedHistory.length === 0) {
+                expList.innerHTML = '<p class="text-center text-slate-500 py-8">No calculation history yet.</p>';
             }
 
             // 4. Update Settle Tab
@@ -540,6 +567,46 @@
                     });
                 }, 3000);
                 return;
+            }
+
+            if (expenses.length > 0) {
+                // Calculate settlements before wiping
+                let debtors = [], creditors = [];
+                for (const [id, bal] of Object.entries(balances)) {
+                    if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
+                    else if (bal > 0.01) creditors.push({ id, amount: bal });
+                }
+                debtors.sort((a,b) => b.amount - a.amount);
+                creditors.sort((a,b) => b.amount - a.amount);
+                let txs = [];
+                let i = 0, j = 0;
+                while (i < debtors.length && j < creditors.length) {
+                    let d = debtors[i], c = creditors[j];
+                    let minAmt = Math.min(d.amount, c.amount);
+                    if(minAmt > 0.01) txs.push({ fromName: friends.find(f=>f.id===d.id)?.name||'Unknown', toName: friends.find(f=>f.id===c.id)?.name||'Unknown', amount: minAmt });
+                    d.amount -= minAmt; c.amount -= minAmt;
+                    if (Math.abs(d.amount) < 0.01) i++;
+                    if (Math.abs(c.amount) < 0.01) j++;
+                }
+
+                const summaryData = {
+                    description: `Group Calculation (${expenses.length} items)`,
+                    amount: expenses.reduce((sum, e) => sum + e.amount, 0),
+                    payerText: 'Multiple',
+                    involvedNames: friends.map(f=>f.name).join(', '),
+                    settlements: txs
+                };
+                
+                // Add to saved history locally for optimistic UI
+                const tempSaved = { ...summaryData, _id: Date.now().toString(), createdAt: new Date().toISOString() };
+                savedHistory.unshift(tempSaved);
+                
+                // Post history summary
+                apiFetch('/api/history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(summaryData)
+                }).catch(console.error);
             }
 
             friends = [];

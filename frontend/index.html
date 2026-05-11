@@ -949,6 +949,58 @@ button {
             }).catch(e => console.error(e));
         }
 
+        async function resetAllData() {
+            if(!confirm('Are you sure you want to delete all expenses and friends?')) return;
+            
+            if (expenses.length > 0) {
+                const totalAmt = expenses.reduce((sum, e) => sum + e.amount, 0);
+                const involvedNames = friends.map(f=>f.name).join(', ');
+                
+                // Get overall settlements
+                let debtors = [], creditors = [];
+                for (const [id, bal] of Object.entries(balances)) {
+                    if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
+                    else if (bal > 0.01) creditors.push({ id, amount: bal });
+                }
+                debtors.sort((a,b) => b.amount - a.amount);
+                creditors.sort((a,b) => b.amount - a.amount);
+                let txs = [];
+                let i = 0, j = 0;
+                while (i < debtors.length && j < creditors.length) {
+                    let d = debtors[i], c = creditors[j];
+                    let minAmt = Math.min(d.amount, c.amount);
+                    if(minAmt > 0.01) txs.push({ fromName: friends.find(f=>f.id===d.id)?.name||'Unknown', toName: friends.find(f=>f.id===c.id)?.name||'Unknown', amount: minAmt });
+                    d.amount -= minAmt; c.amount -= minAmt;
+                    if (Math.abs(d.amount) < 0.01) i++;
+                    if (Math.abs(c.amount) < 0.01) j++;
+                }
+
+                await apiFetch('/api/history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        description: `Group Calculation (${expenses.length} items)`,
+                        amount: totalAmt,
+                        payerText: 'Multiple',
+                        involvedNames: involvedNames,
+                        settlements: txs
+                    })
+                });
+            }
+            
+            friends = [];
+            expenses = [];
+            await apiFetch('/api/state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ friends: [], expenses: [] })
+            });
+            updateBalancesObject();
+            renderFriends();
+            updateExpenseForms();
+            fetchHistory(); // Refresh history tab
+        }
+
         function renderFriends() {
             friendCount.innerText = friends.length;
             friendList.innerHTML = '';
@@ -1062,33 +1114,7 @@ button {
                 body: JSON.stringify(exp)
             }).catch(e => console.error(e));
 
-            // Generate history
-            let payerText = 'Multiple People';
-            if(exp.payersData && exp.payersData.length === 1) {
-                payerText = friends.find(f => f.id === exp.payersData[0].id)?.name || 'Unknown';
-            } else if(!exp.payersData && exp.payerId) {
-                payerText = friends.find(f => f.id === exp.payerId)?.name || 'Unknown';
-            }
-            const invIds = exp.involvedIds && exp.involvedIds.length > 0 ? exp.involvedIds : friends.map(f=>f.id);
-            const involvedNames = invIds.map(id => friends.find(f => f.id === id)?.name || 'Unknown').join(', ');
-            const localTx = getExpenseSettlement(exp);
-            const settlements = localTx.map(tx => ({
-                fromName: friends.find(f => f.id === tx.from)?.name || 'Unknown',
-                toName: friends.find(f => f.id === tx.to)?.name || 'Unknown',
-                amount: tx.amount
-            }));
-            
-            apiFetch('/api/history', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    description,
-                    amount: totalAmount,
-                    payerText,
-                    involvedNames,
-                    settlements
-                })
-            }).catch(e => console.error(e));
+            // We no longer generate history per-expense. It is now generated as a Session Summary upon Reset.
         }
 
         function renderExpenses(limit = 50) {
