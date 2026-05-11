@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SplitSmart Mobile</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f4f4f5; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+        .glass-card { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.04); border-radius: 1.5rem; }
+        .nav-item { transition: all 0.2s; }
+        .nav-item.active { color: #3b82f6; }
+        .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+        .tab-content { display: none; padding-bottom: 100px; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Bottom Sheet Modal */
+        #bottom-sheet { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: flex-end; opacity: 0; transition: opacity 0.3s ease; }
+        #bottom-sheet.open { display: flex; opacity: 1; }
+        .sheet-content { background: #fff; width: 100%; border-radius: 1.5rem 1.5rem 0 0; padding: 2rem 1.5rem; padding-bottom: calc(2rem + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        #bottom-sheet.open .sheet-content { transform: translateY(0); }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Header -->
+    <header class="px-6 pt-12 pb-4 bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-100 flex justify-between items-center">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">SplitSmart</h1>
+        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+            <span class="material-symbols-outlined text-blue-600 text-sm">person</span>
+        </div>
+    </header>
+
+    <!-- Tab 1: Dashboard -->
+    <main id="tab-home" class="tab-content active px-4 pt-6">
+        <div class="glass-card p-6 mb-8 text-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-0 shadow-xl shadow-blue-500/20">
+            <h2 class="text-sm font-medium text-blue-100 uppercase tracking-wider mb-2">Group Total Spent</h2>
+            <div id="hero-balance" class="text-4xl font-bold tracking-tight">₹0</div>
+            <p id="hero-status" class="text-sm text-blue-100 mt-2">All settled up!</p>
+        </div>
+
+        <h3 class="font-bold text-lg mb-4 px-2">Recent Expenses</h3>
+        <div id="mobile-expenses" class="flex flex-col gap-3">
+            <p class="text-center text-slate-500 py-8">No expenses yet.</p>
+        </div>
+    </main>
+
+    <!-- Tab 2: Settle / Balances -->
+    <main id="tab-settle" class="tab-content px-4 pt-6">
+        <h3 class="font-bold text-lg mb-4 px-2">Individual Balances</h3>
+        <div id="mobile-balances" class="flex flex-col gap-3 mb-8">
+            <p class="text-center text-slate-500 py-4">No participants added.</p>
+        </div>
+
+        <h3 class="font-bold text-lg mb-4 px-2">Optimized Settlements</h3>
+        <div id="mobile-settlements" class="flex flex-col gap-3">
+            <p class="text-center text-slate-500 py-8">No pending settlements.</p>
+        </div>
+    </main>
+
+    <!-- Tab 3: Friends/Settings -->
+    <main id="tab-friends" class="tab-content px-4 pt-6">
+        <h3 class="font-bold text-lg mb-4 px-2">Participants</h3>
+        <div class="glass-card p-4 flex gap-3 mb-8">
+            <input type="text" id="add-friend-input" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 transition" placeholder="Enter name">
+            <button onclick="mobileAddFriend()" class="bg-blue-600 text-white rounded-xl px-6 font-semibold shadow-md active:scale-95 transition">Add</button>
+        </div>
+        
+        <h3 class="font-bold text-lg mb-4 px-2">Advanced Settings</h3>
+        <button onclick="mobileResetAll()" class="w-full bg-red-50 text-red-600 font-bold rounded-xl py-4 border border-red-100 mb-3 active:scale-95 transition">Reset All Data</button>
+        <button onclick="localStorage.removeItem('splitsmart_token'); window.location.href='/index.html';" class="w-full bg-slate-100 text-slate-700 font-bold rounded-xl py-4 border border-slate-200 active:scale-95 transition">Logout</button>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around items-center h-[80px] pb-[env(safe-area-inset-bottom)] z-40">
+        <div id="nav-home" class="nav-item active flex flex-col items-center gap-1 text-slate-400 w-16" onclick="switchMobileTab('home')">
+            <span class="material-symbols-outlined text-2xl">home</span>
+            <span class="text-[10px] font-semibold">Home</span>
+        </div>
+        <div id="nav-settle" class="nav-item flex flex-col items-center gap-1 text-slate-400 w-16" onclick="switchMobileTab('settle')">
+            <span class="material-symbols-outlined text-2xl">payments</span>
+            <span class="text-[10px] font-semibold">Settle</span>
+        </div>
+        
+        <!-- FAB Center -->
+        <div class="relative w-16 flex justify-center">
+            <button onclick="openBottomSheet()" class="absolute -top-10 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(37,99,235,0.4)] border-4 border-[#f4f4f5] active:scale-90 transition transform">
+                <span class="material-symbols-outlined text-3xl">add</span>
+            </button>
+        </div>
+
+        <div id="nav-friends" class="nav-item flex flex-col items-center gap-1 text-slate-400 w-16" onclick="switchMobileTab('friends')">
+            <span class="material-symbols-outlined text-2xl">group</span>
+            <span class="text-[10px] font-semibold">Friends</span>
+        </div>
+    </nav>
+
+    <!-- Bottom Sheet Add Expense -->
+    <div id="bottom-sheet" onclick="closeBottomSheet()">
+        <div class="sheet-content shadow-2xl" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Quick Add Expense</h2>
+                <button onclick="closeBottomSheet()" class="text-slate-400 p-2 bg-slate-100 rounded-full active:scale-90 transition"><span class="material-symbols-outlined block text-lg">close</span></button>
+            </div>
+            <input type="text" id="expense-desc" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 mb-4 outline-none focus:border-blue-500 text-lg transition" placeholder="What was it for? (e.g. Lunch)">
+            
+            <div class="relative mb-4">
+                <span class="absolute left-4 top-4 text-slate-400 text-lg font-bold">₹</span>
+                <input type="number" id="expense-amount" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-4 py-4 outline-none focus:border-blue-500 text-lg transition font-semibold" placeholder="0.00" min="0" step="0.01">
+            </div>
+            
+            <div class="mb-6 relative">
+                <label class="text-sm font-semibold text-slate-500 mb-2 block">Who Paid?</label>
+                <select id="expense-payer" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 outline-none focus:border-blue-500 text-lg transition appearance-none font-medium">
+                    <!-- Populated by JS -->
+                </select>
+                <span class="material-symbols-outlined absolute right-4 top-11 text-slate-400 pointer-events-none">expand_more</span>
+                <p class="text-xs text-slate-400 mt-3 text-center bg-slate-50 py-2 rounded-lg border border-slate-100">Automatically split equally among all participants.</p>
+            </div>
+            
+            <button onclick="submitQuickAdd()" class="w-full bg-blue-600 text-white font-bold rounded-xl py-4 shadow-[0_4px_14px_rgba(37,99,235,0.3)] active:scale-95 transition text-lg">Record Expense</button>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('splitsmart_token');
+        if (!token) window.location.replace('/index.html');
+
+        let friends = [];
+        let expenses = [];
+        let balances = {};
+
+        async function apiFetch(url, options = {}) {
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(url, options);
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem('splitsmart_token');
+                window.location.replace('/index.html');
+            }
+            return res.json();
+        }
+
+        async function initMobileApp() {
+            try {
+                const data = await apiFetch('/api/state');
+                friends = data.friends || [];
+                expenses = data.expenses || [];
+                renderMobileApp();
+            } catch (error) {
+                console.error("Error loading app state:", error);
+            }
+        }
+
+        function switchMobileTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`nav-${tabId}`).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function openBottomSheet() {
+            if(friends.length < 2) {
+                alert("Please add at least 2 participants before adding an expense.");
+                switchMobileTab('friends');
+                return;
+            }
+            const sheet = document.getElementById('bottom-sheet');
+            sheet.style.display = 'flex';
+            setTimeout(() => sheet.classList.add('open'), 10);
+            
+            // Populate payers
+            const select = document.getElementById('expense-payer');
+            select.innerHTML = friends.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+        }
+
+        function closeBottomSheet() {
+            const sheet = document.getElementById('bottom-sheet');
+            sheet.classList.remove('open');
+            setTimeout(() => sheet.style.display = 'none', 300);
+        }
+
+        async function mobileAddFriend() {
+            const input = document.getElementById('add-friend-input');
+            const name = input.value.trim();
+            if(!name) return;
+            
+            const newFriend = { id: `u_${Date.now()}`, name };
+            friends.push(newFriend);
+            input.value = '';
+            
+            await apiFetch('/api/state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ friends, expenses })
+            });
+            renderMobileApp();
+        }
+
+        async function submitQuickAdd() {
+            const desc = document.getElementById('expense-desc').value.trim();
+            const amt = parseFloat(document.getElementById('expense-amount').value);
+            const payerId = document.getElementById('expense-payer').value;
+            
+            if(!desc || !amt || isNaN(amt) || amt <= 0) {
+                alert("Please enter a valid description and amount.");
+                return;
+            }
+            
+            // Create expense object format expected by backend
+            const exp = {
+                id: `e_${Date.now()}`,
+                description: desc,
+                amount: amt,
+                payersData: [{ id: payerId, amount: amt }],
+                involvedIds: friends.map(f => f.id) // Split equally among all
+            };
+            
+            expenses.push(exp);
+            
+            // Save state immediately
+            await apiFetch('/api/expenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(exp)
+            });
+
+            // Close sheet and reset
+            document.getElementById('expense-desc').value = '';
+            document.getElementById('expense-amount').value = '';
+            closeBottomSheet();
+            
+            renderMobileApp();
+            
+            // Calculate history in background just like desktop
+            calculateAndSaveHistory(exp);
+            
+            // Go to home tab
+            switchMobileTab('home');
+        }
+
+        function calculateAndSaveHistory(exp) {
+            updateBalancesObject();
+            const involved = exp.involvedIds;
+            const splitAmount = exp.amount / involved.length;
+            involved.forEach(id => balances[id] -= splitAmount);
+            exp.payersData.forEach(p => balances[p.id] += p.amount);
+
+            let debtors = [], creditors = [];
+            for (const [id, bal] of Object.entries(balances)) {
+                if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
+                else if (bal > 0.01) creditors.push({ id, amount: bal });
+            }
+
+            debtors.sort((a,b) => b.amount - a.amount);
+            creditors.sort((a,b) => b.amount - a.amount);
+
+            let transactions = [];
+            let i = 0, j = 0;
+            while (i < debtors.length && j < creditors.length) {
+                let d = debtors[i], c = creditors[j];
+                let minAmt = Math.min(d.amount, c.amount);
+                if(minAmt > 0.01) transactions.push({ from: d.id, to: c.id, amount: minAmt });
+                d.amount -= minAmt; c.amount -= minAmt;
+                if (Math.abs(d.amount) < 0.01) i++;
+                if (Math.abs(c.amount) < 0.01) j++;
+            }
+            
+            const payerText = friends.find(f => f.id === exp.payersData[0].id)?.name || 'Unknown';
+            const involvedNames = involved.map(id => friends.find(f => f.id === id)?.name || 'Unknown').join(', ');
+            
+            const settlements = transactions.map(tx => ({
+                fromName: friends.find(f => f.id === tx.from)?.name || 'Unknown',
+                toName: friends.find(f => f.id === tx.to)?.name || 'Unknown',
+                amount: tx.amount
+            }));
+
+            apiFetch('/api/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    description: exp.description,
+                    amount: exp.amount,
+                    payerText,
+                    involvedNames,
+                    settlements
+                })
+            });
+        }
+
+        function updateBalancesObject() {
+            balances = {};
+            friends.forEach(f => balances[f.id] = 0);
+        }
+
+        function renderMobileApp() {
+            updateBalancesObject();
+            let totalSpent = 0;
+            
+            // Recalculate Balances
+            expenses.forEach(exp => {
+                totalSpent += exp.amount;
+                const involved = (exp.involvedIds && exp.involvedIds.length > 0) ? exp.involvedIds : friends.map(f=>f.id);
+                const splitAmount = exp.amount / involved.length;
+                involved.forEach(id => balances[id] -= splitAmount);
+                if (exp.payersData) {
+                    exp.payersData.forEach(p => balances[p.id] += p.amount);
+                } else if (exp.payerId) {
+                    balances[exp.payerId] += exp.amount;
+                }
+            });
+
+            // Update Home Tab
+            document.getElementById('hero-balance').innerText = `₹${totalSpent.toFixed(2)}`;
+            
+            const expList = document.getElementById('mobile-expenses');
+            expList.innerHTML = '';
+            if(expenses.length === 0) {
+                expList.innerHTML = '<p class="text-center text-slate-500 py-8">No expenses yet.</p>';
+            } else {
+                [...expenses].reverse().slice(0, 15).forEach(e => {
+                    let payerText = e.payersData ? friends.find(f => f.id === e.payersData[0].id)?.name : 'Unknown';
+                    expList.innerHTML += `
+                    <div class="glass-card p-4 flex justify-between items-center active:scale-95 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg">
+                                ${e.description.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800">${e.description}</h4>
+                                <p class="text-xs text-slate-500">Paid by ${payerText}</p>
+                            </div>
+                        </div>
+                        <div class="font-bold text-lg text-slate-800">₹${e.amount.toFixed(2)}</div>
+                    </div>`;
+                });
+            }
+
+            // Update Settle Tab
+            const balList = document.getElementById('mobile-balances');
+            balList.innerHTML = '';
+            if(friends.length === 0) {
+                balList.innerHTML = '<p class="text-center text-slate-500 py-4">No participants added.</p>';
+            } else {
+                friends.forEach(f => {
+                    const bal = balances[f.id];
+                    let balClass = bal > 0.01 ? "text-emerald-500" : (bal < -0.01 ? "text-rose-500" : "text-slate-500");
+                    let balText = bal > 0.01 ? `Owed ₹${bal.toFixed(2)}` : (bal < -0.01 ? `Owes ₹${Math.abs(bal).toFixed(2)}` : `Settled`);
+                    balList.innerHTML += `
+                    <div class="bg-white rounded-xl p-4 flex justify-between items-center border border-slate-100 shadow-sm">
+                        <div class="font-semibold text-slate-700">${f.name}</div>
+                        <div class="font-bold ${balClass}">${balText}</div>
+                    </div>`;
+                });
+            }
+
+            // Calculate Settlements
+            let debtors = [], creditors = [];
+            for (const [id, bal] of Object.entries(balances)) {
+                if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
+                else if (bal > 0.01) creditors.push({ id, amount: bal });
+            }
+            debtors.sort((a,b) => b.amount - a.amount);
+            creditors.sort((a,b) => b.amount - a.amount);
+
+            let transactions = [];
+            let i = 0, j = 0;
+            while (i < debtors.length && j < creditors.length) {
+                let d = debtors[i], c = creditors[j];
+                let minAmt = Math.min(d.amount, c.amount);
+                if(minAmt > 0.01) transactions.push({ from: d.id, to: c.id, amount: minAmt });
+                d.amount -= minAmt; c.amount -= minAmt;
+                if (Math.abs(d.amount) < 0.01) i++;
+                if (Math.abs(c.amount) < 0.01) j++;
+            }
+
+            const setList = document.getElementById('mobile-settlements');
+            setList.innerHTML = '';
+            if(transactions.length === 0) {
+                setList.innerHTML = '<p class="text-center text-emerald-500 font-medium py-8 bg-emerald-50 rounded-2xl border border-emerald-100">🎉 Everyone is settled up!</p>';
+            } else {
+                transactions.forEach(tx => {
+                    const fromName = friends.find(f => f.id === tx.from)?.name;
+                    const toName = friends.find(f => f.id === tx.to)?.name;
+                    setList.innerHTML += `
+                    <div class="bg-white rounded-2xl p-5 border-l-4 border-l-blue-500 shadow-sm flex justify-between items-center">
+                        <div class="text-sm text-slate-600">
+                            <span class="font-bold text-slate-800">${fromName}</span> pays <span class="font-bold text-slate-800">${toName}</span>
+                        </div>
+                        <div class="text-xl font-bold text-blue-600">₹${tx.amount.toFixed(2)}</div>
+                    </div>`;
+                });
+            }
+        }
+
+        async function mobileResetAll() {
+            if(!confirm('Are you sure you want to delete all expenses and friends?')) return;
+            friends = [];
+            expenses = [];
+            await apiFetch('/api/state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ friends: [], expenses: [] })
+            });
+            renderMobileApp();
+            switchMobileTab('home');
+        }
+
+        initMobileApp();
+    </script>
+</body>
+</html>
