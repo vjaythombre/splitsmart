@@ -1,7 +1,8 @@
-const CACHE_NAME = 'splitsmart-cache-v2';
+const CACHE_NAME = 'splitsmart-cache-v4';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/mobile.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -33,13 +34,21 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  
+  // Network First, falling back to Cache
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).catch(() => {});
+        // Cache the fresh response
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request);
       })
   );
 });

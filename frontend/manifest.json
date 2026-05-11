@@ -2,7 +2,7 @@
   "name": "SplitSmart",
   "short_name": "SplitSmart",
   "description": "Simplified Expense Management & Diagnostics",
-  "start_url": "/",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#ffffff",
