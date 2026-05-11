@@ -379,18 +379,75 @@
                     if(e.payersData && e.payersData.length === 1) {
                         payerText = friends.find(f => f.id === e.payersData[0].id)?.name || 'Unknown';
                     }
+                    
+                    // Parse Date
+                    const timestamp = parseInt(e.id.split('_')[1]);
+                    const dateStr = isNaN(timestamp) ? 'Unknown Date' : new Date(timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+                    
+                    // Calculate Specific Settlements for this Expense
+                    let tempBalances = {};
+                    friends.forEach(f => tempBalances[f.id] = 0);
+                    const involved = (e.involvedIds && e.involvedIds.length > 0) ? e.involvedIds : friends.map(f=>f.id);
+                    const splitAmount = e.amount / involved.length;
+                    involved.forEach(id => tempBalances[id] -= splitAmount);
+                    if (e.payersData) {
+                        e.payersData.forEach(p => tempBalances[p.id] += p.amount);
+                    } else if (e.payerId) {
+                        tempBalances[e.payerId] += e.amount;
+                    }
+                    let debtors = [], creditors = [];
+                    for (const [id, bal] of Object.entries(tempBalances)) {
+                        if (bal < -0.01) debtors.push({ id, amount: Math.abs(bal) });
+                        else if (bal > 0.01) creditors.push({ id, amount: bal });
+                    }
+                    debtors.sort((a,b) => b.amount - a.amount);
+                    creditors.sort((a,b) => b.amount - a.amount);
+                    let txs = [];
+                    let i = 0, j = 0;
+                    while (i < debtors.length && j < creditors.length) {
+                        let d = debtors[i], c = creditors[j];
+                        let minAmt = Math.min(d.amount, c.amount);
+                        if(minAmt > 0.01) txs.push({ from: d.id, to: c.id, amount: minAmt });
+                        d.amount -= minAmt; c.amount -= minAmt;
+                        if (Math.abs(d.amount) < 0.01) i++;
+                        if (Math.abs(c.amount) < 0.01) j++;
+                    }
+                    
+                    let txHTML = txs.map(tx => {
+                        const fromName = friends.find(f => f.id === tx.from)?.name || 'Unknown';
+                        const toName = friends.find(f => f.id === tx.to)?.name || 'Unknown';
+                        return `<div class="text-sm text-slate-600 border-b border-slate-200 last:border-0 py-1"><span class="font-semibold text-slate-800">${fromName}</span> owes <span class="font-semibold text-slate-800">${toName}</span> <span class="font-bold text-blue-600">₹${tx.amount.toFixed(2)}</span></div>`;
+                    }).join('');
+                    if(txs.length === 0) txHTML = '<div class="text-sm text-emerald-600 py-1">Everyone paid their exact share!</div>';
+                    
                     expList.innerHTML += `
-                    <div class="glass-card p-4 flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-lg border border-slate-200">
-                                ${e.description.charAt(0).toUpperCase()}
+                    <div class="glass-card p-4 active:scale-[0.98] transition cursor-pointer" onclick="toggleHistoryDetails('${e.id}')">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg border border-blue-100 shadow-inner">
+                                    ${e.description.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800">${e.description}</h4>
+                                    <p class="text-xs text-slate-500 font-medium">Paid by ${payerText}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 class="font-bold text-slate-800">${e.description}</h4>
-                                <p class="text-xs text-slate-500">Paid by ${payerText}</p>
+                            <div class="flex flex-col items-end">
+                                <div class="font-bold text-lg text-slate-800">₹${e.amount.toFixed(2)}</div>
+                                <span class="material-symbols-outlined text-slate-400 transition-transform duration-200" id="icon-${e.id}">expand_more</span>
                             </div>
                         </div>
-                        <div class="font-bold text-lg text-slate-800">₹${e.amount.toFixed(2)}</div>
+                        
+                        <!-- Expandable Details -->
+                        <div class="mt-4 pt-4 border-t border-slate-100 hidden" id="details-${e.id}">
+                            <div class="flex items-center gap-2 text-xs text-slate-400 mb-3 font-medium">
+                                <span class="material-symbols-outlined text-[14px]">calendar_today</span> ${dateStr}
+                            </div>
+                            <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Settlement for this bill</h5>
+                            <div class="bg-slate-50 rounded-lg px-3 py-1 border border-slate-100">
+                                ${txHTML}
+                            </div>
+                        </div>
                     </div>`;
                 });
             }
@@ -449,6 +506,18 @@
                         <div class="font-bold text-blue-600">₹${tx.amount.toFixed(2)}</div>
                     </div>`;
                 });
+            }
+        }
+
+        function toggleHistoryDetails(id) {
+            const el = document.getElementById(`details-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            if(el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                el.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
             }
         }
 
