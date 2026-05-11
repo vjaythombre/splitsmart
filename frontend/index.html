@@ -7,7 +7,10 @@
     <title>SplitSmart - Professional Expense Tracker</title>
     <link rel="manifest" href="/manifest.json">
     <script>
-        // Removed mobile.html redirect to use the main responsive application
+        // Detect if app is running in standalone PWA mode
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            document.documentElement.classList.add('pwa-mode');
+        }
     </script>
     <link rel="icon" href="/favicon.ico">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -111,70 +114,69 @@ h1 {
     }
 }
 
-@media (max-width: 600px) {
-    body {
-        padding-bottom: 80px;
-        user-select: none;
-        -webkit-tap-highlight-color: transparent;
-    }
-    .container {
-        padding: 0;
-        gap: 0;
-        display: block;
-    }
-    .panel {
-        display: none;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-        padding: 1.5rem 1rem;
-        min-height: calc(100vh - 140px);
-        background: transparent;
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
-        animation: none;
-    }
-    .panel.active {
-        display: block;
-        animation: fadeInSlideUp 0.3s ease;
-    }
-    header {
-        position: sticky;
-        top: 0;
-        z-index: 50;
-        background: var(--bg-color);
-        padding: 1rem 0;
-        border-bottom: 1px solid var(--border-color);
-    }
-    #user-controls {
-        display: none !important;
-    }
-    .expense-form-grid {
-        grid-template-columns: 1fr !important;
-    }
-    .input-group {
-        flex-direction: column;
-    }
-    button {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-    .controls {
-        flex-direction: column;
-    }
-    .modal-content {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: none !important;
-        border-radius: 0 !important;
-        padding: 4rem 1.5rem !important;
-        border: none !important;
-        overflow-y: auto;
-    }
-    
-    #mobile-nav {
-        display: flex !important;
-    }
+/* --- PWA App UI (Standalone Mode Only) --- */
+html.pwa-mode body {
+    padding-bottom: 80px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+html.pwa-mode .container {
+    padding: 0;
+    gap: 0;
+    display: block;
+}
+html.pwa-mode .panel {
+    display: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 1.5rem 1rem;
+    min-height: calc(100vh - 140px);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    animation: none;
+}
+html.pwa-mode .panel.active {
+    display: block;
+    animation: fadeInSlideUp 0.3s ease;
+}
+html.pwa-mode header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg-color);
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+html.pwa-mode #user-controls {
+    display: none !important;
+}
+html.pwa-mode .expense-form-grid {
+    grid-template-columns: 1fr !important;
+}
+html.pwa-mode .input-group {
+    flex-direction: column;
+}
+html.pwa-mode button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+html.pwa-mode .controls {
+    flex-direction: column;
+}
+html.pwa-mode .modal-content {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    padding: 4rem 1.5rem !important;
+    border: none !important;
+    overflow-y: auto;
+}
+
+html.pwa-mode #mobile-nav {
+    display: flex !important;
 }
 
 #mobile-nav {
@@ -978,7 +980,7 @@ button {
 
         // --- Mobile App Tab Logic ---
         function switchAppTab(index) {
-            if (window.innerWidth > 600) return; // Only active on mobile
+            if (!document.documentElement.classList.contains('pwa-mode')) return; // Only active in standalone PWA mode
             
             const panels = document.querySelectorAll('.panel');
             const navItems = document.querySelectorAll('.nav-item:not(.nav-fab)');
