@@ -82,7 +82,7 @@
                 <p class="text-sm text-slate-400">No pending settlements.</p>
             </div>
             
-            <button onclick="mobileResetAll()" class="w-full bg-red-50 text-red-600 font-bold rounded-xl py-3 border border-red-100 active:scale-95 transition flex justify-center items-center gap-2 mt-4">
+            <button onclick="mobileResetAll()" class="reset-btn w-full bg-red-50 text-red-600 font-bold rounded-xl py-3 border border-red-100 active:scale-95 transition flex justify-center items-center gap-2 mt-4">
                 <span class="material-symbols-outlined">delete_forever</span> Reset Data
             </button>
         </div>
@@ -104,7 +104,7 @@
         <div class="glass-card p-5 mb-6">
             <h4 class="font-semibold text-slate-700 mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-red-500">warning</span> Danger Zone</h4>
             <p class="text-sm text-slate-500 mb-4">Resetting data will permanently delete all friends and expenses from the current session.</p>
-            <button onclick="mobileResetAll()" class="w-full bg-red-50 text-red-600 font-bold rounded-xl py-3 border border-red-100 active:scale-95 transition flex justify-center items-center gap-2">
+            <button onclick="mobileResetAll()" class="reset-btn w-full bg-red-50 text-red-600 font-bold rounded-xl py-3 border border-red-100 active:scale-95 transition flex justify-center items-center gap-2">
                 <span class="material-symbols-outlined">delete_forever</span> Reset All Data
             </button>
         </div>
@@ -452,17 +452,49 @@
             }
         }
 
-        async function mobileResetAll() {
-            if(!confirm('Are you sure you want to delete all expenses and friends?')) return;
+        let resetTapCount = 0;
+        function mobileResetAll() {
+            if (resetTapCount === 0) {
+                resetTapCount++;
+                const btns = document.querySelectorAll('.reset-btn');
+                btns.forEach(b => {
+                    b.innerHTML = '<span class="material-symbols-outlined">warning</span> Tap again to confirm reset';
+                    b.classList.replace('bg-red-50', 'bg-red-600');
+                    b.classList.replace('text-red-600', 'text-white');
+                });
+                setTimeout(() => {
+                    resetTapCount = 0;
+                    btns.forEach(b => {
+                        b.innerHTML = '<span class="material-symbols-outlined">delete_forever</span> Reset Data';
+                        b.classList.replace('bg-red-600', 'bg-red-50');
+                        b.classList.replace('text-white', 'text-red-600');
+                    });
+                }, 3000);
+                return;
+            }
+
             friends = [];
             expenses = [];
-            await apiFetch('/api/state', {
+            
+            // Optimistic UI Update
+            renderMobileApp();
+            switchMobileTab('calculate');
+            
+            // Reset button state immediately
+            resetTapCount = 0;
+            const btns = document.querySelectorAll('.reset-btn');
+            btns.forEach(b => {
+                b.innerHTML = '<span class="material-symbols-outlined">delete_forever</span> Reset Data';
+                b.classList.replace('bg-red-600', 'bg-red-50');
+                b.classList.replace('text-white', 'text-red-600');
+            });
+            
+            // Background Sync
+            apiFetch('/api/state', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ friends: [], expenses: [] })
-            });
-            renderMobileApp();
-            switchMobileTab('calculate');
+            }).catch(console.error);
         }
 
         initMobileApp();
